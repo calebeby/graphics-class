@@ -1,18 +1,29 @@
 {
-	"name": "astro-graphics-class",
-	"type": "module",
-	"version": "0.0.1",
-	"scripts": {
-		"dev": "astro dev",
-		"start": "astro dev",
-		"build": "astro build",
-		"preview": "astro preview",
-		"astro": "astro"
-	},
-	"dependencies": {
-		"astro": "^2.0.15",
-		"preact": "^10.7.3",
-		"@astrojs/preact": "^2.0.3",
-		"@preact/signals": "^1.1.0"
-	}
+  "name": "graphics-class",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "lint:check": "eslint . && prettier --check . --plugin-search-dir=.",
+    "lint": "eslint --fix . && prettier --write . --plugin-search-dir=."
+  },
+  "dependencies": {
+    "@preact/signals": "^1.1.0",
+    "preact": "^10.7.3"
+  },
+  "devDependencies": {
+    "@astrojs/preact": "^2.0.3",
+    "@types/node": "^18.14.1",
+    "astro": "^2.0.15",
+    "eslint": "^8.35.0",
+    "prettier": "^2.8.4",
+    "prettier-plugin-astro": "^0.8.0",
+    "typescript": "^4.9.5"
+  },
+  "prettier": {
+    "trailingComma": "all"
+  }
 }
