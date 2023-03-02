@@ -8,9 +8,9 @@ enum TransformType {
 }
 
 enum Axis {
-  X,
-  Y,
-  Z,
+  X = "x",
+  Y = "y",
+  Z = "z",
 }
 
 export interface BaseTransform {
@@ -158,28 +158,32 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   {transform.type === TransformType.Rotate ? "Rotate" : "Scale"}
                 </h1>
                 <div class="transform-builtin-controls">
-                  <button
-                    disabled={i === 0}
-                    onClick={() => {
-                      let tmp = transforms[i];
-                      transforms[i] = transforms[i - 1];
-                      transforms[i - 1] = tmp;
-                      set_transforms([...transforms]);
-                    }}
-                  >
-                    Move Up
-                  </button>
-                  <button
-                    disabled={i === transforms.length - 1}
-                    onClick={() => {
-                      let tmp = transforms[i];
-                      transforms[i] = transforms[i + 1];
-                      transforms[i + 1] = tmp;
-                      set_transforms([...transforms]);
-                    }}
-                  >
-                    Move Down
-                  </button>
+                  {transforms.length > 1 && (
+                    <>
+                      <button
+                        disabled={i === 0}
+                        onClick={() => {
+                          let tmp = transforms[i];
+                          transforms[i] = transforms[i - 1];
+                          transforms[i - 1] = tmp;
+                          set_transforms([...transforms]);
+                        }}
+                      >
+                        Move Up
+                      </button>
+                      <button
+                        disabled={i === transforms.length - 1}
+                        onClick={() => {
+                          let tmp = transforms[i];
+                          transforms[i] = transforms[i + 1];
+                          transforms[i + 1] = tmp;
+                          set_transforms([...transforms]);
+                        }}
+                      >
+                        Move Down
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => {
                       set_transforms((all) =>
@@ -224,6 +228,7 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
               ) : (
                 <>
                   <select
+                    value={transform.rotation_axis}
                     onChange={(e) => {
                       const v = e.currentTarget.value;
                       if (v === "x") {
