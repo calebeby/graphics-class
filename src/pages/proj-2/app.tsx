@@ -5,6 +5,7 @@ import { init_canvas } from "./graphics";
 enum TransformType {
   Rotate = "rotate",
   Scale = "scale",
+  Translate = "translate",
 }
 
 enum Axis {
@@ -40,6 +41,28 @@ class ScaleTransform implements BaseTransform {
     m.m11 = this.x;
     m.m22 = this.y;
     m.m33 = this.z;
+    return m;
+  }
+}
+
+class TranslateTransform implements BaseTransform {
+  id: number = get_id();
+  type = TransformType.Translate as const;
+  x: number;
+  y: number;
+  z: number;
+
+  constructor(x: number, y: number, z: number) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+
+  get_matrix(): DOMMatrix {
+    const m = new DOMMatrix();
+    m.m41 = this.x;
+    m.m42 = this.y;
+    m.m43 = this.z;
     return m;
   }
 }
@@ -83,7 +106,7 @@ class RotateTransform implements BaseTransform {
   }
 }
 
-type Transform = ScaleTransform | RotateTransform;
+type Transform = ScaleTransform | RotateTransform | TranslateTransform;
 
 interface Props {
   initial_transforms?: Transform[];
@@ -129,6 +152,7 @@ export const TransformDemo = ({ initial_transforms = [] }: Props) => {
       <canvas ref={canvas_ref}></canvas>
       <div class="add-transform-controls">
         <select ref={select_ref as any}>
+          <option value="translate">Translate</option>
           <option value="scale">Scale</option>
           <option value="rotate">Rotate</option>
         </select>
@@ -139,6 +163,8 @@ export const TransformDemo = ({ initial_transforms = [] }: Props) => {
               ...t,
               type === TransformType.Rotate
                 ? new RotateTransform(0, Axis.X)
+                : type === TransformType.Translate
+                ? new TranslateTransform(0, 0, 0)
                 : new ScaleTransform(1, 1, 1),
             ]);
           }}
@@ -157,7 +183,11 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
             <li key={transform.id} data-key={transform.id}>
               <div class="transform-title">
                 <h1>
-                  {transform.type === TransformType.Rotate ? "Rotate" : "Scale"}
+                  {transform.type === TransformType.Rotate
+                    ? "Rotate"
+                    : transform.type === TransformType.Translate
+                    ? "Translate"
+                    : "Scale"}
                 </h1>
                 <div class="transform-builtin-controls">
                   {transforms.length > 1 && (
@@ -221,6 +251,36 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     name="Scale Z"
                     value={transform.z}
                     range={5}
+                    on_input={(v) => {
+                      transform.z = v;
+                      set_transforms((t) => [...t]);
+                    }}
+                  />
+                </>
+              ) : transform.type === TransformType.Translate ? (
+                <>
+                  <TransformControl
+                    name="Translate X"
+                    value={transform.x}
+                    range={1}
+                    on_input={(v) => {
+                      transform.x = v;
+                      set_transforms((t) => [...t]);
+                    }}
+                  />
+                  <TransformControl
+                    name="Translate Y"
+                    value={transform.y}
+                    range={1}
+                    on_input={(v) => {
+                      transform.y = v;
+                      set_transforms((t) => [...t]);
+                    }}
+                  />
+                  <TransformControl
+                    name="Translate Z"
+                    value={transform.z}
+                    range={1}
                     on_input={(v) => {
                       transform.z = v;
                       set_transforms((t) => [...t]);
