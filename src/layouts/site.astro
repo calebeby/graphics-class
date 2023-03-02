@@ -1,0 +1,29 @@
+---
+// prettier-ignore (astro doesn't support expanded TS syntax)
+export type Props = { title: string } | { frontmatter: { title: string } };
+const title =
+  "title" in Astro.props ? Astro.props.title : Astro.props.frontmatter.title;
+if (!title) throw new Error("title is required in site layout");
+import DOMMatrix from '@thednp/dommatrix/dist/dommatrix.mjs'
+// To fix astro's running components in node, which doesn't have DOMMatrix built-in
+globalThis.DOMMatrix = DOMMatrix as any
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Vollkorn:ital,wght@0,400..900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

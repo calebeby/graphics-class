@@ -1,0 +1,46 @@
+body {
+  margin: 0;
+}
+
+.transform-demo {
+  width: 100%;
+  padding: 1em;
+  border: 2px solid #0000001a;
+  border-radius: 10px;
+  display: grid;
+  gap: 1em;
+}
+
+.transform-demo > * {
+  margin: 0;
+}
+
+.transform-demo > ol {
+  margin: 0;
+  padding: 0;
+}
+
+.transform-demo > ol > li {
+  list-style-type: none;
+}
+
+.transform-demo .transform-control {
+  display: grid;
+  grid-auto-flow: column;
+  margin-right: auto;
+  width: fit-content;
+  gap: 1em;
+}
+
+canvas {
+  aspect-ratio: 16/9;
+  display: block;
+  width: 100%;
+  border-radius: 5px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

@@ -7,21 +7,28 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "lint:check": "eslint . && prettier --check . --plugin-search-dir=.",
-    "lint": "eslint --fix . && prettier --write . --plugin-search-dir=."
+    "lint:check": "eslint . && prettier --check . --plugin-search-dir=. --cache",
+    "lint": "eslint --fix . && prettier --write . --plugin-search-dir=. --cache",
+    "vite": "vite"
   },
   "dependencies": {
     "@preact/signals": "^1.1.0",
     "preact": "^10.7.3"
   },
   "devDependencies": {
+    "@astrojs/mdx": "^0.17.2",
     "@astrojs/preact": "^2.0.3",
+    "@preact/preset-vite": "^2.5.0",
+    "@thednp/dommatrix": "^2.0.2",
     "@types/node": "^18.14.1",
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
+    "@typescript-eslint/parser": "^5.54.0",
     "astro": "^2.0.15",
     "eslint": "^8.35.0",
     "prettier": "^2.8.4",
     "prettier-plugin-astro": "^0.8.0",
-    "typescript": "^4.9.5"
+    "typescript": "^4.9.5",
+    "vite": "^4.1.4"
   },
   "prettier": {
     "trailingComma": "all"

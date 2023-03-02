@@ -1,0 +1,22 @@
+body {
+  background: #ece7da;
+  color: #151515;
+  font-family: "Vollkorn", serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font-family: "Vollkorn", serif;
+  font-size: 1em;
+}

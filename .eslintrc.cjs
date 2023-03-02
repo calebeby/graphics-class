@@ -25,7 +25,7 @@ module.exports = {
         format: ["snake_case", "UPPER_CASE", "PascalCase"],
       },
       {
-        selector: "typeLike",
+        selector: ["typeLike", "enumMember"],
         format: ["PascalCase"],
       },
     ],

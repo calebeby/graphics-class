@@ -1,17 +1,8 @@
 ---
 import { Proj1 } from "./app";
+import SiteLayout from "../../layouts/site.astro";
 ---
 
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Proj 1</title>
-  </head>
-  <body>
-    <div id="app">
-      <Proj1 client:load />
-    </div>
-  </body>
-</html>
+<SiteLayout title="Proj 1">
+  <Proj1 client:load />
+</SiteLayout>

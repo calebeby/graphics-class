@@ -1,35 +1,57 @@
 import vsSource from "./vertex-shader.glsl?raw";
 import fsSource from "./fragment-shader.glsl?raw";
+import type { RefObject } from "preact";
 
-export const init_canvas = (canvas: HTMLCanvasElement) => {
+export const init_canvas = (
+  canvas: HTMLCanvasElement,
+  transform_matrix_ref: RefObject<DOMMatrix>,
+) => {
   const gl = canvas.getContext("webgl2")!;
   const rendering_program = init_shader_program(gl);
+  gl.useProgram(rendering_program);
   const vertex_array_object = gl.createVertexArray();
   gl.bindVertexArray(vertex_array_object);
+  const matrix_id_transform = gl.getUniformLocation(
+    rendering_program,
+    "transform",
+  );
 
-  // Track the mouse x/y position via mousemove events
-  let mouse = { x: 0, y: 0 };
-  const mouse_listener = (e: MouseEvent) => {
-    mouse.x = e.offsetX;
-    mouse.y = e.offsetY;
-  };
-  canvas.addEventListener("mousemove", mouse_listener);
+  //Depth Test Enable (only render things 'forward' of other things)
+  gl.enable(gl.DEPTH_TEST);
+  // Passes if the fragment's depth values is less than stored value
+  gl.depthFunc(gl.LEQUAL);
 
   // Track changes to the canvas element size and update the canvas internal rendering size
   const resize_listener: ResizeObserverCallback = () => {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
+    const min_dimension = Math.min(canvas.width, canvas.height);
+    // Force the axes to be square (matching x and y scale in terms of pixels,
+    // even if the canvas "rendering box" is rectangular)
+    gl.viewport(
+      // Force 0, 0 to be in the middle by shifting the axes based on which dimension is larger
+      (canvas.width - min_dimension) / 2,
+      (canvas.height - min_dimension) / 2,
+      min_dimension,
+      min_dimension,
+    );
     cancelAnimationFrame(frame_req);
     render();
   };
   const resize_observer = new ResizeObserver(resize_listener);
   resize_observer.observe(canvas, {});
-  gl.useProgram(rendering_program);
 
   const render = () => {
-    gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 1]);
-    gl.vertexAttrib4fv(0, [mouse.x / 1000, -mouse.y / 1000, 0, 1]);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.uniformMatrix4fv(
+      matrix_id_transform,
+      false,
+      transform_matrix_ref.current!.toFloat32Array(),
+      0,
+      16,
+    );
+    gl.clearBufferfv(gl.COLOR, 0, [0, 0.5, 1, 1]);
+    gl.drawArrays(gl.TRIANGLES, 0, 18);
+    // gl.drawArrays(gl.TRIANGLES, 0, 36);
     frame_req = requestAnimationFrame(render);
   };
 
@@ -41,7 +63,6 @@ export const init_canvas = (canvas: HTMLCanvasElement) => {
       cancelAnimationFrame(frame_req);
       gl.deleteVertexArray(vertex_array_object);
       gl.deleteProgram(rendering_program);
-      canvas.removeEventListener("mousemove", mouse_listener);
       resize_observer.unobserve(canvas);
     },
   };

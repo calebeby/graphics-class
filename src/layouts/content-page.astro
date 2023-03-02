@@ -1,0 +1,32 @@
+---
+import SiteLayout from "./site.astro";
+// prettier-ignore (astro doesn't support expanded TS syntax)
+export type Props = { title: string } | { frontmatter: { title: string } };
+const title =
+  "title" in Astro.props ? Astro.props.title : Astro.props.frontmatter.title;
+if (!title) throw new Error("title is required in content-page layout");
+import '../content-page.css'
+---
+
+<SiteLayout title={title}>
+  <div class="page-content">
+    <slot />
+  </div>
+</SiteLayout>
+
+<style>
+  .page-content {
+    margin-top: 5em;
+    width: 40em;
+    max-width: calc(100vw - 2em);
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5em;
+  }
+
+  .page-content > :global(*) {
+    margin: 0;
+  }
+</style>
