@@ -14,11 +14,16 @@ enum Axis {
 }
 
 export interface BaseTransform {
+  id: number;
   type: TransformType;
   get_matrix(): DOMMatrix;
 }
 
+let id_counter = 0;
+const get_id = () => ++id_counter;
+
 class ScaleTransform implements BaseTransform {
+  id: number = get_id();
   type = TransformType.Scale as const;
   x: number;
   y: number;
@@ -40,6 +45,7 @@ class ScaleTransform implements BaseTransform {
 }
 
 class RotateTransform implements BaseTransform {
+  id: number = get_id();
   type = TransformType.Rotate as const;
   angle_degrees: number;
   rotation_axis: Axis;
@@ -136,7 +142,7 @@ export const TransformDemo = ({ initial_transforms = [] }: Props) => {
           ]);
         }}
       >
-        Add transform
+        Add Transform
       </button>
       <pre>{`${transform_matrix_str.slice(0, 4).join(" ")}
 ${transform_matrix_str.slice(4, 8).join(" ")}
@@ -145,11 +151,46 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
 `}</pre>
       {transforms.length > 0 && (
         <ol>
-          {transforms.map((transform) => (
-            <li>
-              <h1>
-                {transform.type === TransformType.Rotate ? "Rotate" : "Scale"}
-              </h1>
+          {transforms.map((transform, i) => (
+            <li key={transform.id} data-key={transform.id}>
+              <div class="transform-title">
+                <h1>
+                  {transform.type === TransformType.Rotate ? "Rotate" : "Scale"}
+                </h1>
+                <div class="transform-builtin-controls">
+                  <button
+                    disabled={i === 0}
+                    onClick={() => {
+                      let tmp = transforms[i];
+                      transforms[i] = transforms[i - 1];
+                      transforms[i - 1] = tmp;
+                      set_transforms([...transforms]);
+                    }}
+                  >
+                    Move Up
+                  </button>
+                  <button
+                    disabled={i === transforms.length - 1}
+                    onClick={() => {
+                      let tmp = transforms[i];
+                      transforms[i] = transforms[i + 1];
+                      transforms[i + 1] = tmp;
+                      set_transforms([...transforms]);
+                    }}
+                  >
+                    Move Down
+                  </button>
+                  <button
+                    onClick={() => {
+                      set_transforms((all) =>
+                        all.filter((t) => t !== transform),
+                      );
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
               {transform.type === TransformType.Scale ? (
                 <>
                   <TransformControl
@@ -210,13 +251,6 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   />
                 </>
               )}
-              <button
-                onClick={() => {
-                  set_transforms((all) => all.filter((t) => t !== transform));
-                }}
-              >
-                Remove
-              </button>
             </li>
           ))}
         </ol>

@@ -15,8 +15,22 @@ h6 {
 }
 
 button,
-input,
 select {
   font-family: "Vollkorn", serif;
   font-size: 1em;
+  background: #d2cdbe;
+  color: black;
+  border: none;
+  border-radius: 5px;
+  padding: 0.4em 0.5em;
+}
+
+button,
+select {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+:is(button, select):is(:hover, :focus) {
+  background: #bbb298;
 }

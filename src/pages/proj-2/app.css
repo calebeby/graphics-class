@@ -32,7 +32,20 @@ body {
   gap: 1em;
 }
 
-canvas {
+.transform-demo .transform-title {
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+.transform-demo .transform-builtin-controls {
+  display: grid;
+  grid-auto-flow: column;
+  gap: inherit;
+  align-content: center;
+}
+
+.transform-demo canvas {
   aspect-ratio: 16/9;
   display: block;
   width: 100%;
