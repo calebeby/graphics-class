@@ -127,23 +127,25 @@ export const TransformDemo = ({ initial_transforms = [] }: Props) => {
   return (
     <div class="transform-demo">
       <canvas ref={canvas_ref}></canvas>
-      <select ref={select_ref as any}>
-        <option value="scale">Scale</option>
-        <option value="rotate">Rotate</option>
-      </select>
-      <button
-        onClick={() => {
-          const type = select_ref.current!.value as TransformType;
-          set_transforms((t) => [
-            ...t,
-            type === TransformType.Rotate
-              ? new RotateTransform(0, Axis.X)
-              : new ScaleTransform(1, 1, 1),
-          ]);
-        }}
-      >
-        Add Transform
-      </button>
+      <div class="add-transform-controls">
+        <select ref={select_ref as any}>
+          <option value="scale">Scale</option>
+          <option value="rotate">Rotate</option>
+        </select>
+        <button
+          onClick={() => {
+            const type = select_ref.current!.value as TransformType;
+            set_transforms((t) => [
+              ...t,
+              type === TransformType.Rotate
+                ? new RotateTransform(0, Axis.X)
+                : new ScaleTransform(1, 1, 1),
+            ]);
+          }}
+        >
+          Add Transform
+        </button>
+      </div>
       <pre>{`${transform_matrix_str.slice(0, 4).join(" ")}
 ${transform_matrix_str.slice(4, 8).join(" ")}
 ${transform_matrix_str.slice(8, 12).join(" ")}
