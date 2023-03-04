@@ -23,8 +23,8 @@ export const init_canvas = (
 
   // Track changes to the canvas element size and update the canvas internal rendering size
   const resize_listener: ResizeObserverCallback = () => {
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
+    canvas.width = canvas.clientWidth * window.devicePixelRatio;
+    canvas.height = canvas.clientHeight * window.devicePixelRatio;
     const min_dimension = Math.min(canvas.width, canvas.height);
     // Force the axes to be square (matching x and y scale in terms of pixels,
     // even if the canvas "rendering box" is rectangular)

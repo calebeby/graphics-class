@@ -6,29 +6,41 @@ enum TransformType {
   Rotate = "rotate",
   Scale = "scale",
   Translate = "translate",
+  Invert = "invert",
 }
 
-enum Axis {
+export enum Axis {
   X = "x",
   Y = "y",
   Z = "z",
 }
 
+const clone = <T extends Transform>(o: Readonly<T> | T) => {
+  const t: T = Object.create(Object.getPrototypeOf(o));
+  Object.assign(t, o);
+  return t;
+};
+
 export interface BaseTransform {
   id: number;
   type: TransformType;
-  get_matrix(): DOMMatrix;
+  get_matrix(all_transforms: Readonly<Transform>[]): DOMMatrix;
+  get_name(all_transforms: Readonly<Transform>[]): string;
 }
 
 let id_counter = 0;
 const get_id = () => ++id_counter;
 
-class ScaleTransform implements BaseTransform {
-  id: number = get_id();
+export class ScaleTransform implements BaseTransform {
+  id = get_id();
   type = TransformType.Scale as const;
   x: number;
   y: number;
   z: number;
+
+  get_name() {
+    return `Scale(${this.x}, ${this.y}, ${this.z})`;
+  }
 
   constructor(x: number, y: number, z: number) {
     this.x = x;
@@ -45,12 +57,16 @@ class ScaleTransform implements BaseTransform {
   }
 }
 
-class TranslateTransform implements BaseTransform {
-  id: number = get_id();
+export class TranslateTransform implements BaseTransform {
+  id = get_id();
   type = TransformType.Translate as const;
   x: number;
   y: number;
   z: number;
+
+  get_name() {
+    return `Translate(${this.x}, ${this.y}, ${this.z})`;
+  }
 
   constructor(x: number, y: number, z: number) {
     this.x = x;
@@ -67,11 +83,15 @@ class TranslateTransform implements BaseTransform {
   }
 }
 
-class RotateTransform implements BaseTransform {
-  id: number = get_id();
+export class RotateTransform implements BaseTransform {
+  id = get_id();
   type = TransformType.Rotate as const;
   angle_degrees: number;
   rotation_axis: Axis;
+
+  get_name() {
+    return `Rotate${this.rotation_axis.toUpperCase()}(${this.angle_degrees}°)`;
+  }
 
   constructor(angle_degrees: number, rotation_axis: Axis) {
     this.angle_degrees = angle_degrees;
@@ -80,8 +100,8 @@ class RotateTransform implements BaseTransform {
 
   get_matrix(): DOMMatrix {
     const m = new DOMMatrix();
-    const cos = Math.cos(this.angle_degrees);
-    const sin = Math.sin(this.angle_degrees);
+    const cos = Math.cos((Math.PI * this.angle_degrees) / 180);
+    const sin = Math.sin((Math.PI * this.angle_degrees) / 180);
     if (this.rotation_axis === Axis.X) {
       // Rotate about X:
       m.m22 = cos;
@@ -106,31 +126,90 @@ class RotateTransform implements BaseTransform {
   }
 }
 
-type Transform = ScaleTransform | RotateTransform | TranslateTransform;
+export class InvertTransform implements BaseTransform {
+  id = get_id();
+  type = TransformType.Invert as const;
+  id_to_invert: number;
+
+  get_name(all_transforms: readonly Transform[]): string {
+    const transform = this.find_corresponding_transform(all_transforms);
+    return `Invert(${
+      transform ? transform.get_name(all_transforms) : "Unknown"
+    })`;
+  }
+
+  constructor(id_to_invert: number) {
+    this.id_to_invert = id_to_invert;
+  }
+
+  find_corresponding_transform(
+    transforms: readonly Transform[],
+  ): Transform | undefined {
+    return transforms.find((t) => t.id === this.id_to_invert);
+  }
+
+  get_matrix(transforms: readonly Transform[]): DOMMatrix {
+    const transform = this.find_corresponding_transform(transforms);
+    return transform
+      ? transform.get_matrix(transforms).inverse()
+      : new DOMMatrix();
+  }
+}
+
+const transform_types = {
+  scale: ScaleTransform,
+  rotate: RotateTransform,
+  translate: TranslateTransform,
+  invert: InvertTransform,
+} as const;
+
+type Transform =
+  (typeof transform_types)[keyof typeof transform_types]["prototype"];
+
+const hydrate_initial_transforms = (initial_transforms: Transform[]) =>
+  initial_transforms.map((transform) => {
+    id_counter = Math.max(transform.id, id_counter);
+    // This "hydrates" the passed-in transforms from astro
+    // In astro's SSR it serializes them to JSON which means when they are revived,
+    // they are plain objects (not instances of classes)
+    // This switches them back to instances of classes
+    if (transform.constructor === Object) {
+      const base = transform_types[transform.type];
+      const t = Object.create(base.prototype);
+      Object.assign(t, transform);
+      return t;
+    } else {
+      return transform;
+    }
+  });
 
 interface Props {
   initial_transforms?: Transform[];
 }
 
-export const TransformDemo = ({ initial_transforms = [] }: Props) => {
+export const TransformDemo = ({
+  initial_transforms: initial_transforms_unnormalized = [],
+}: Props) => {
+  const initial_transforms = useMemo(
+    () => hydrate_initial_transforms(initial_transforms_unnormalized),
+    [initial_transforms_unnormalized],
+  );
   const canvas_ref = useRef<HTMLCanvasElement>(null);
   const select_ref = useRef<HTMLSelectElement>(null);
   const transform_matrix_ref = useRef<DOMMatrix>(new DOMMatrix());
 
   const [transforms, set_transforms] =
-    useState<Transform[]>(initial_transforms);
+    useState<Readonly<Transform>[]>(initial_transforms);
 
-  const transform_matrix = useMemo(
-    () =>
-      transforms.reduce(
-        (combined_matrix, transform) =>
-          // (transform * combined) reverses the order,
-          // to make the actual transformations happen top-to-bottom as displayed
-          transform.get_matrix().multiply(combined_matrix),
-        new DOMMatrix(),
-      ),
-    [transforms],
-  );
+  const transform_matrix = useMemo(() => {
+    return transforms.reduce(
+      (combined_matrix, transform) =>
+        // (transform * combined) reverses the order,
+        // to make the actual transformations happen top-to-bottom as displayed
+        transform.get_matrix(transforms).multiply(combined_matrix),
+      new DOMMatrix(),
+    );
+  }, [transforms]);
 
   useEffect(() => {
     transform_matrix_ref.current = transform_matrix;
@@ -152,9 +231,10 @@ export const TransformDemo = ({ initial_transforms = [] }: Props) => {
       <canvas ref={canvas_ref}></canvas>
       <div class="add-transform-controls">
         <select ref={select_ref as any}>
-          <option value="translate">Translate</option>
-          <option value="scale">Scale</option>
-          <option value="rotate">Rotate</option>
+          <option value={TransformType.Translate}>Translate</option>
+          <option value={TransformType.Scale}>Scale</option>
+          <option value={TransformType.Rotate}>Rotate</option>
+          <option value={TransformType.Invert}>Invert</option>
         </select>
         <button
           onClick={() => {
@@ -165,6 +245,8 @@ export const TransformDemo = ({ initial_transforms = [] }: Props) => {
                 ? new RotateTransform(0, Axis.X)
                 : type === TransformType.Translate
                 ? new TranslateTransform(0, 0, 0)
+                : type === TransformType.Invert
+                ? new InvertTransform(transforms[0].id)
                 : new ScaleTransform(1, 1, 1),
             ]);
           }}
@@ -182,13 +264,10 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
           {transforms.map((transform, i) => (
             <li key={transform.id} data-key={transform.id}>
               <div class="transform-title">
-                <h1>
-                  {transform.type === TransformType.Rotate
-                    ? "Rotate"
-                    : transform.type === TransformType.Translate
-                    ? "Translate"
-                    : "Scale"}
-                </h1>
+                <h2>
+                  {`(${i + 1}) `}
+                  <code>{transform.get_name(transforms)}</code>
+                </h2>
                 <div class="transform-builtin-controls">
                   {transforms.length > 1 && (
                     <>
@@ -234,8 +313,13 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.x}
                     range={5}
                     on_input={(v) => {
-                      transform.x = v;
-                      set_transforms((t) => [...t]);
+                      const t2 = clone(transform);
+                      t2.x = v;
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
                     }}
                   />
                   <TransformControl
@@ -243,8 +327,13 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.y}
                     range={5}
                     on_input={(v) => {
-                      transform.y = v;
-                      set_transforms((t) => [...t]);
+                      const t2 = clone(transform);
+                      t2.y = v;
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
                     }}
                   />
                   <TransformControl
@@ -252,8 +341,13 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.z}
                     range={5}
                     on_input={(v) => {
-                      transform.z = v;
-                      set_transforms((t) => [...t]);
+                      const t2 = clone(transform);
+                      t2.z = v;
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
                     }}
                   />
                 </>
@@ -264,8 +358,13 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.x}
                     range={1}
                     on_input={(v) => {
-                      transform.x = v;
-                      set_transforms((t) => [...t]);
+                      const t2 = clone(transform);
+                      t2.x = v;
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
                     }}
                   />
                   <TransformControl
@@ -273,8 +372,13 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.y}
                     range={1}
                     on_input={(v) => {
-                      transform.y = v;
-                      set_transforms((t) => [...t]);
+                      const t2 = clone(transform);
+                      t2.y = v;
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
                     }}
                   />
                   <TransformControl
@@ -282,10 +386,39 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.z}
                     range={1}
                     on_input={(v) => {
-                      transform.z = v;
-                      set_transforms((t) => [...t]);
+                      const t2 = clone(transform);
+                      t2.z = v;
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
                     }}
                   />
+                </>
+              ) : transform.type === TransformType.Invert ? (
+                <>
+                  <select
+                    value={transform.id_to_invert}
+                    onChange={(e) => {
+                      const t2 = clone(transform);
+                      t2.id_to_invert = Number(e.currentTarget.value);
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
+                    }}
+                  >
+                    {transforms
+                      .map((t, i) => [t, i] as const)
+                      .filter(([t]) => t !== transform)
+                      .map(([t, i]) => (
+                        <option value={t.id}>
+                          {`Invert (${i}) ${t.get_name(transforms)}`}
+                        </option>
+                      ))}
+                  </select>
                 </>
               ) : (
                 <>
@@ -293,14 +426,19 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.rotation_axis}
                     onChange={(e) => {
                       const v = e.currentTarget.value;
+                      const t2 = clone(transform);
                       if (v === "x") {
-                        transform.rotation_axis = Axis.X;
+                        t2.rotation_axis = Axis.X;
                       } else if (v === "y") {
-                        transform.rotation_axis = Axis.Y;
+                        t2.rotation_axis = Axis.Y;
                       } else {
-                        transform.rotation_axis = Axis.Z;
+                        t2.rotation_axis = Axis.Z;
                       }
-                      set_transforms((t) => [...t]);
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
                     }}
                   >
                     <option value="x">Rotate About X Axis</option>
@@ -309,11 +447,16 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   </select>
                   <TransformControl
                     name="Rotation (degrees)"
-                    value={(transform.angle_degrees * 180) / Math.PI}
+                    value={transform.angle_degrees}
                     range={180}
                     on_input={(v) => {
-                      transform.angle_degrees = (v * Math.PI) / 180;
-                      set_transforms((t) => [...t]);
+                      const t2 = clone(transform);
+                      t2.angle_degrees = v;
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        cloned[i] = t2;
+                        return cloned;
+                      });
                     }}
                   />
                 </>
@@ -359,7 +502,12 @@ const TransformControl = ({
           on_input(e.currentTarget.valueAsNumber);
         }}
       />
-      <span>{value.toFixed(2)}</span>
+      <input
+        value={value.toFixed(2)}
+        onInput={(e) => {
+          on_input(e.currentTarget.valueAsNumber);
+        }}
+      />
     </label>
   );
 };
