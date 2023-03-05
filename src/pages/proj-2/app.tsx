@@ -39,7 +39,9 @@ export class ScaleTransform implements BaseTransform {
   z: number;
 
   get_name() {
-    return `Scale(${this.x}, ${this.y}, ${this.z})`;
+    return `Scale(${this.x.toFixed(2)}, ${this.y.toFixed(2)}, ${this.z.toFixed(
+      2,
+    )})`;
   }
 
   constructor(x: number, y: number, z: number) {
@@ -65,7 +67,9 @@ export class TranslateTransform implements BaseTransform {
   z: number;
 
   get_name() {
-    return `Translate(${this.x}, ${this.y}, ${this.z})`;
+    return `Translate(${this.x.toFixed(2)}, ${this.y.toFixed(
+      2,
+    )}, ${this.z.toFixed(2)})`;
   }
 
   constructor(x: number, y: number, z: number) {
@@ -90,7 +94,9 @@ export class RotateTransform implements BaseTransform {
   rotation_axis: Axis;
 
   get_name() {
-    return `Rotate${this.rotation_axis.toUpperCase()}(${this.angle_degrees}°)`;
+    return `Rotate${this.rotation_axis.toUpperCase()}(${this.angle_degrees.toFixed(
+      2,
+    )}°)`;
   }
 
   constructor(angle_degrees: number, rotation_axis: Axis) {
@@ -229,31 +235,6 @@ export const TransformDemo = ({
   return (
     <div class="transform-demo">
       <canvas ref={canvas_ref}></canvas>
-      <div class="add-transform-controls">
-        <select ref={select_ref as any}>
-          <option value={TransformType.Translate}>Translate</option>
-          <option value={TransformType.Scale}>Scale</option>
-          <option value={TransformType.Rotate}>Rotate</option>
-          <option value={TransformType.Invert}>Invert</option>
-        </select>
-        <button
-          onClick={() => {
-            const type = select_ref.current!.value as TransformType;
-            set_transforms((t) => [
-              ...t,
-              type === TransformType.Rotate
-                ? new RotateTransform(0, Axis.X)
-                : type === TransformType.Translate
-                ? new TranslateTransform(0, 0, 0)
-                : type === TransformType.Invert
-                ? new InvertTransform(transforms[0].id)
-                : new ScaleTransform(1, 1, 1),
-            ]);
-          }}
-        >
-          Add Transform
-        </button>
-      </div>
       <pre>{`${transform_matrix_str.slice(0, 4).join(" ")}
 ${transform_matrix_str.slice(4, 8).join(" ")}
 ${transform_matrix_str.slice(8, 12).join(" ")}
@@ -313,10 +294,10 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.x}
                     range={5}
                     on_input={(v) => {
-                      const t2 = clone(transform);
-                      t2.x = v;
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.x = v;
                         cloned[i] = t2;
                         return cloned;
                       });
@@ -327,10 +308,10 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.y}
                     range={5}
                     on_input={(v) => {
-                      const t2 = clone(transform);
-                      t2.y = v;
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.y = v;
                         cloned[i] = t2;
                         return cloned;
                       });
@@ -341,10 +322,10 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.z}
                     range={5}
                     on_input={(v) => {
-                      const t2 = clone(transform);
-                      t2.z = v;
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.z = v;
                         cloned[i] = t2;
                         return cloned;
                       });
@@ -356,12 +337,12 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   <TransformControl
                     name="Translate X"
                     value={transform.x}
-                    range={1}
+                    range={0.4}
                     on_input={(v) => {
-                      const t2 = clone(transform);
-                      t2.x = v;
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.x = v;
                         cloned[i] = t2;
                         return cloned;
                       });
@@ -370,12 +351,12 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   <TransformControl
                     name="Translate Y"
                     value={transform.y}
-                    range={1}
+                    range={0.4}
                     on_input={(v) => {
-                      const t2 = clone(transform);
-                      t2.y = v;
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.y = v;
                         cloned[i] = t2;
                         return cloned;
                       });
@@ -384,12 +365,12 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   <TransformControl
                     name="Translate Z"
                     value={transform.z}
-                    range={1}
+                    range={0.4}
                     on_input={(v) => {
-                      const t2 = clone(transform);
-                      t2.z = v;
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.z = v;
                         cloned[i] = t2;
                         return cloned;
                       });
@@ -465,6 +446,31 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
           ))}
         </ol>
       )}
+      <div class="add-transform-controls">
+        <select ref={select_ref as any}>
+          <option value={TransformType.Translate}>Translate</option>
+          <option value={TransformType.Scale}>Scale</option>
+          <option value={TransformType.Rotate}>Rotate</option>
+          <option value={TransformType.Invert}>Invert</option>
+        </select>
+        <button
+          onClick={() => {
+            const type = select_ref.current!.value as TransformType;
+            set_transforms((t) => [
+              ...t,
+              type === TransformType.Rotate
+                ? new RotateTransform(0, Axis.X)
+                : type === TransformType.Translate
+                ? new TranslateTransform(0, 0, 0)
+                : type === TransformType.Invert
+                ? new InvertTransform(transforms[0].id)
+                : new ScaleTransform(1, 1, 1),
+            ]);
+          }}
+        >
+          Add Transform
+        </button>
+      </div>
       {transforms !== initial_transforms && (
         <button
           onClick={() => {
@@ -489,6 +495,16 @@ const TransformControl = ({
   range: number;
   on_input: (value: number) => void;
 }) => {
+  const [is_animated, set_is_animated] = useState(false);
+  useEffect(() => {
+    const start = new Date().getTime();
+    const i = is_animated
+      ? setInterval(() => {
+          on_input(range * Math.sin((new Date().getTime() - start) / 1000));
+        }, 20)
+      : false;
+    return () => i && clearInterval(i);
+  }, [is_animated]);
   return (
     <label class="transform-control">
       <span>{name}</span>
@@ -503,11 +519,17 @@ const TransformControl = ({
         }}
       />
       <input
+        type="number"
         value={value.toFixed(2)}
         onInput={(e) => {
           on_input(e.currentTarget.valueAsNumber);
         }}
       />
+      {is_animated ? (
+        <button onClick={() => set_is_animated(false)}>Stop</button>
+      ) : (
+        <button onClick={() => set_is_animated(true)}>Animate</button>
+      )}
     </label>
   );
 };

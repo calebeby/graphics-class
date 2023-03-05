@@ -53,6 +53,9 @@ body {
   justify-content: space-between;
   gap: 0.5em;
 }
+.transform-demo .transform-title code {
+  font-size: 0.8em;
+}
 .transform-demo .transform-builtin-controls {
   display: grid;
   grid-auto-flow: column;
