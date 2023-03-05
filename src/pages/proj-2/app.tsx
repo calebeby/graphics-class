@@ -396,7 +396,7 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                       .filter(([t]) => t !== transform)
                       .map(([t, i]) => (
                         <option value={t.id}>
-                          {`Invert (${i}) ${t.get_name(transforms)}`}
+                          {`Invert (${i + 1}) ${t.get_name(transforms)}`}
                         </option>
                       ))}
                   </select>
