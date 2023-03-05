@@ -53,6 +53,11 @@ body {
   justify-content: space-between;
   gap: 0.5em;
 }
+@media (max-width: 600px) {
+  .transform-demo .transform-title {
+    grid-auto-flow: row;
+  }
+}
 .transform-demo .transform-title code {
   font-size: 0.8em;
 }
