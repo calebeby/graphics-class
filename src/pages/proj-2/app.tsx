@@ -293,43 +293,43 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     name="Scale X"
                     value={transform.x}
                     range={5}
-                    on_input={(v) => {
+                    on_input={(v) =>
                       set_transforms((t) => {
                         const cloned = [...t];
                         const t2 = clone(cloned[i] as typeof transform);
                         t2.x = v;
                         cloned[i] = t2;
                         return cloned;
-                      });
-                    }}
+                      })
+                    }
                   />
                   <TransformControl
                     name="Scale Y"
                     value={transform.y}
                     range={5}
-                    on_input={(v) => {
+                    on_input={(v) =>
                       set_transforms((t) => {
                         const cloned = [...t];
                         const t2 = clone(cloned[i] as typeof transform);
                         t2.y = v;
                         cloned[i] = t2;
                         return cloned;
-                      });
-                    }}
+                      })
+                    }
                   />
                   <TransformControl
                     name="Scale Z"
                     value={transform.z}
                     range={5}
-                    on_input={(v) => {
+                    on_input={(v) =>
                       set_transforms((t) => {
                         const cloned = [...t];
                         const t2 = clone(cloned[i] as typeof transform);
                         t2.z = v;
                         cloned[i] = t2;
                         return cloned;
-                      });
-                    }}
+                      })
+                    }
                   />
                 </>
               ) : transform.type === TransformType.Translate ? (
@@ -338,58 +338,58 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     name="Translate X"
                     value={transform.x}
                     range={0.4}
-                    on_input={(v) => {
+                    on_input={(v) =>
                       set_transforms((t) => {
                         const cloned = [...t];
                         const t2 = clone(cloned[i] as typeof transform);
                         t2.x = v;
                         cloned[i] = t2;
                         return cloned;
-                      });
-                    }}
+                      })
+                    }
                   />
                   <TransformControl
                     name="Translate Y"
                     value={transform.y}
                     range={0.4}
-                    on_input={(v) => {
+                    on_input={(v) =>
                       set_transforms((t) => {
                         const cloned = [...t];
                         const t2 = clone(cloned[i] as typeof transform);
                         t2.y = v;
                         cloned[i] = t2;
                         return cloned;
-                      });
-                    }}
+                      })
+                    }
                   />
                   <TransformControl
                     name="Translate Z"
                     value={transform.z}
                     range={0.4}
-                    on_input={(v) => {
+                    on_input={(v) =>
                       set_transforms((t) => {
                         const cloned = [...t];
                         const t2 = clone(cloned[i] as typeof transform);
                         t2.z = v;
                         cloned[i] = t2;
                         return cloned;
-                      });
-                    }}
+                      })
+                    }
                   />
                 </>
               ) : transform.type === TransformType.Invert ? (
                 <>
                   <select
                     value={transform.id_to_invert}
-                    onChange={(e) => {
-                      const t2 = clone(transform);
-                      t2.id_to_invert = Number(e.currentTarget.value);
+                    onChange={(e) =>
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.id_to_invert = Number(e.currentTarget.value);
                         cloned[i] = t2;
                         return cloned;
-                      });
-                    }}
+                      })
+                    }
                   >
                     {transforms
                       .map((t, i) => [t, i] as const)
@@ -407,16 +407,16 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     value={transform.rotation_axis}
                     onChange={(e) => {
                       const v = e.currentTarget.value;
-                      const t2 = clone(transform);
-                      if (v === "x") {
-                        t2.rotation_axis = Axis.X;
-                      } else if (v === "y") {
-                        t2.rotation_axis = Axis.Y;
-                      } else {
-                        t2.rotation_axis = Axis.Z;
-                      }
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        if (v === "x") {
+                          t2.rotation_axis = Axis.X;
+                        } else if (v === "y") {
+                          t2.rotation_axis = Axis.Y;
+                        } else {
+                          t2.rotation_axis = Axis.Z;
+                        }
                         cloned[i] = t2;
                         return cloned;
                       });
@@ -430,15 +430,15 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                     name="Rotation (degrees)"
                     value={transform.angle_degrees}
                     range={180}
-                    on_input={(v) => {
-                      const t2 = clone(transform);
-                      t2.angle_degrees = v;
+                    on_input={(v) =>
                       set_transforms((t) => {
                         const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.angle_degrees = v;
                         cloned[i] = t2;
                         return cloned;
-                      });
-                    }}
+                      })
+                    }
                   />
                 </>
               )}
@@ -520,7 +520,7 @@ const TransformControl = ({
       />
       <input
         type="number"
-        size={5}
+        size={6}
         value={value.toFixed(2)}
         onInput={(e) => {
           on_input(e.currentTarget.valueAsNumber);
