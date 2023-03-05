@@ -39,3 +39,7 @@ select {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+input {
+  padding: 0.4em 0.5em;
+}

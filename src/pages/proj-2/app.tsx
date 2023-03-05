@@ -520,6 +520,7 @@ const TransformControl = ({
       />
       <input
         type="number"
+        size={5}
         value={value.toFixed(2)}
         onInput={(e) => {
           on_input(e.currentTarget.valueAsNumber);

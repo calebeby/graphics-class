@@ -8,7 +8,7 @@ body {
   border: 2px solid #0000001a;
   border-radius: 10px;
   display: grid;
-  gap: 1em;
+  gap: 1.5em;
 }
 
 .transform-demo > * {
@@ -31,9 +31,9 @@ body {
 .transform-demo .transform-control {
   display: grid;
   grid-auto-flow: column;
-  margin-right: auto;
-  width: fit-content;
   gap: 1em;
+  justify-content: start;
+  align-items: center;
 }
 
 .transform-demo > ol > li > select {
