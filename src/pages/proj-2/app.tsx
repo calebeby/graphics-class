@@ -207,14 +207,21 @@ export const TransformDemo = ({
   const [transforms, set_transforms] =
     useState<Readonly<Transform>[]>(initial_transforms);
 
+  const [perspective_amount, set_perspective_amount] = useState(0);
+
   const transform_matrix = useMemo(() => {
-    return transforms.reduce(
+    const combined = transforms.reduce(
       (combined_matrix, transform) =>
         // (transform * combined) reverses the order,
         // to make the actual transformations happen top-to-bottom as displayed
         transform.get_matrix(transforms).multiply(combined_matrix),
       new DOMMatrix(),
     );
+
+    const perspective = new DOMMatrix();
+    perspective.m34 = perspective_amount;
+
+    return perspective.multiply(combined);
   }, [transforms]);
 
   useEffect(() => {
@@ -471,6 +478,12 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
           Add Transform
         </button>
       </div>
+      <TransformControl
+        name="Perspective Amount"
+        value={perspective_amount}
+        range={1.5}
+        on_input={(v) => set_perspective_amount(v)}
+      />
       {transforms !== initial_transforms && (
         <button
           onClick={() => {
@@ -522,7 +535,7 @@ const TransformControl = ({
         type="number"
         size={6}
         value={value.toFixed(2)}
-        onInput={(e) => {
+        onChange={(e) => {
           on_input(e.currentTarget.valueAsNumber);
         }}
       />
