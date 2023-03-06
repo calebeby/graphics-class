@@ -385,7 +385,7 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   />
                 </>
               ) : transform.type === TransformType.Invert ? (
-                <>
+                transforms.filter((t) => t !== transform).length > 0 ? (
                   <select
                     value={transform.id_to_invert}
                     onChange={(e) =>
@@ -407,7 +407,9 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                         </option>
                       ))}
                   </select>
-                </>
+                ) : (
+                  <p>Add another transform to invert it with this transform</p>
+                )
               ) : (
                 <>
                   <select
@@ -470,7 +472,9 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                 : type === TransformType.Translate
                 ? new TranslateTransform(0, 0, 0)
                 : type === TransformType.Invert
-                ? new InvertTransform(transforms[0].id)
+                ? new InvertTransform(
+                    transforms.length > 0 ? transforms[0].id : -1,
+                  )
                 : new ScaleTransform(1, 1, 1),
             ]);
           }}
