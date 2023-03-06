@@ -523,6 +523,7 @@ const TransformControl = ({
       <span>{name}</span>
       <input
         type="range"
+        disabled={is_animated}
         value={value}
         min={-range}
         max={range}
@@ -533,6 +534,7 @@ const TransformControl = ({
       />
       <input
         type="number"
+        disabled={is_animated}
         size={6}
         value={value.toFixed(2)}
         onChange={(e) => {
