@@ -7,6 +7,7 @@ enum TransformType {
   Scale = "scale",
   Translate = "translate",
   Invert = "invert",
+  Reflect = "reflect",
 }
 
 export enum Axis {
@@ -132,6 +133,35 @@ export class RotateTransform implements BaseTransform {
   }
 }
 
+export class ReflectTransform implements BaseTransform {
+  id = get_id();
+  type = TransformType.Reflect as const;
+  reflect_along_axis: Axis;
+
+  get_name() {
+    return `Reflect(${[Axis.X, Axis.Y, Axis.Z]
+      .filter((ax) => ax !== this.reflect_along_axis)
+      .join("-")
+      .toUpperCase()} Plane)`;
+  }
+
+  constructor(reflect_along_axis: Axis) {
+    this.reflect_along_axis = reflect_along_axis;
+  }
+
+  get_matrix(): DOMMatrix {
+    const m = new DOMMatrix();
+    if (this.reflect_along_axis === Axis.X) {
+      m.m11 = -1;
+    } else if (this.reflect_along_axis === Axis.Y) {
+      m.m22 = -1;
+    } else {
+      m.m33 = -1;
+    }
+    return m;
+  }
+}
+
 export class InvertTransform implements BaseTransform {
   id = get_id();
   type = TransformType.Invert as const;
@@ -167,6 +197,7 @@ const transform_types = {
   rotate: RotateTransform,
   translate: TranslateTransform,
   invert: InvertTransform,
+  reflect: ReflectTransform,
 } as const;
 
 type Transform =
@@ -410,22 +441,34 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                 ) : (
                   <p>Add another transform to invert it with this transform</p>
                 )
+              ) : transform.type === TransformType.Reflect ? (
+                <select
+                  value={transform.reflect_along_axis}
+                  onChange={(e) => {
+                    const v = e.currentTarget.value as Axis;
+                    set_transforms((t) => {
+                      const cloned = [...t];
+                      const t2 = clone(cloned[i] as typeof transform);
+                      t2.reflect_along_axis = v;
+                      cloned[i] = t2;
+                      return cloned;
+                    });
+                  }}
+                >
+                  <option value={Axis.X}>Reflect across Y-Z plane</option>
+                  <option value={Axis.Y}>Reflect across X-Z plane</option>
+                  <option value={Axis.Z}>Reflect across X-Y plane</option>
+                </select>
               ) : (
                 <>
                   <select
                     value={transform.rotation_axis}
                     onChange={(e) => {
-                      const v = e.currentTarget.value;
+                      const v = e.currentTarget.value as Axis;
                       set_transforms((t) => {
                         const cloned = [...t];
                         const t2 = clone(cloned[i] as typeof transform);
-                        if (v === "x") {
-                          t2.rotation_axis = Axis.X;
-                        } else if (v === "y") {
-                          t2.rotation_axis = Axis.Y;
-                        } else {
-                          t2.rotation_axis = Axis.Z;
-                        }
+                        t2.rotation_axis = v;
                         cloned[i] = t2;
                         return cloned;
                       });
@@ -461,6 +504,7 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
           <option value={TransformType.Scale}>Scale</option>
           <option value={TransformType.Rotate}>Rotate</option>
           <option value={TransformType.Invert}>Invert</option>
+          <option value={TransformType.Reflect}>Reflect</option>
         </select>
         <button
           onClick={() => {
@@ -475,6 +519,8 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                 ? new InvertTransform(
                     transforms.length > 0 ? transforms[0].id : -1,
                   )
+                : type === TransformType.Reflect
+                ? new ReflectTransform(Axis.X)
                 : new ScaleTransform(1, 1, 1),
             ]);
           }}
