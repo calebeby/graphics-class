@@ -509,11 +509,18 @@ const TransformControl = ({
   on_input: (value: number) => void;
 }) => {
   const [is_animated, set_is_animated] = useState(false);
+  // on_input is stored in the ref so the most up-to-date callback is called in the setInterval loop
+  const on_input_ref = useRef(on_input);
+  useEffect(() => {
+    on_input_ref.current = on_input;
+  }, [on_input]);
   useEffect(() => {
     const start = new Date().getTime();
     const i = is_animated
       ? setInterval(() => {
-          on_input(range * Math.sin((new Date().getTime() - start) / 1000));
+          on_input_ref.current(
+            range * Math.sin((new Date().getTime() - start) / 1000),
+          );
         }, 20)
       : false;
     return () => i && clearInterval(i);
