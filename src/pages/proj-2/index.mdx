@@ -4,6 +4,7 @@ title: Project 2 - Transformation Demo
 ---
 
 import * as p from "./app";
+import * as t from "./transforms";
 
 # Project 2 - Transformations Demo
 
@@ -11,11 +12,11 @@ import * as p from "./app";
 
 Notice how a translation, followed by a rotation, followed by the inverse translation allows us to rotate about an axis displaced from the origin. In this example, try adjusting the y rotation and notice how it rotates around the axis through one of the edges of the pyramid.
 
-export const t1 = new p.TranslateTransform(0.2, 0, 0)
+export const translateTransform = new t.TranslateTransform(0.2, 0, 0)
 export const transforms = [
-  t1,
-  new p.RotateTransform(50, p.Axis.Y),
-  new p.InvertTransform(t1.id)
+  translateTransform,
+  new t.RotateTransform(50, t.Axis.Y),
+  new t.InvertTransform(translateTransform.id)
 ]
 
 <p.TransformDemo client:load initial_transforms={transforms}/>
