@@ -521,7 +521,7 @@ const TransformControl = ({
           on_input_ref.current(
             range * Math.sin((new Date().getTime() - start) / 1000),
           );
-        }, 20)
+        }, 10)
       : false;
     return () => i && clearInterval(i);
   }, [is_animated]);
