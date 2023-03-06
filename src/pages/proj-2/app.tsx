@@ -8,6 +8,7 @@ enum TransformType {
   Translate = "translate",
   Invert = "invert",
   Reflect = "reflect",
+  Skew = "skew",
 }
 
 export enum Axis {
@@ -133,6 +134,43 @@ export class RotateTransform implements BaseTransform {
   }
 }
 
+export class SkewTransform implements BaseTransform {
+  id = get_id();
+  type = TransformType.Skew as const;
+  s: number;
+  t: number;
+  skew_axis: Axis;
+
+  get_name() {
+    return `Skew${[Axis.X, Axis.Y, Axis.Z]
+      .filter((ax) => ax !== this.skew_axis)
+      .join("")
+      .toUpperCase()}(s=${this.s.toFixed(2)}, t=${this.t.toFixed(2)})`;
+  }
+
+  constructor(s: number, t: number, skew_axis: Axis) {
+    this.skew_axis = skew_axis;
+    this.s = s;
+    this.t = t;
+  }
+
+  get_matrix(): DOMMatrix {
+    const m = new DOMMatrix();
+    if (this.skew_axis === Axis.X) {
+      m.m21 = this.s;
+      m.m31 = this.t;
+    } else if (this.skew_axis === Axis.Y) {
+      m.m12 = this.s;
+      m.m32 = this.t;
+    } else {
+      m.m13 = this.s;
+      m.m23 = this.t;
+    }
+
+    return m;
+  }
+}
+
 export class ReflectTransform implements BaseTransform {
   id = get_id();
   type = TransformType.Reflect as const;
@@ -198,6 +236,7 @@ const transform_types = {
   translate: TranslateTransform,
   invert: InvertTransform,
   reflect: ReflectTransform,
+  skew: SkewTransform,
 } as const;
 
 type Transform =
@@ -459,6 +498,54 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   <option value={Axis.Y}>Reflect across X-Z plane</option>
                   <option value={Axis.Z}>Reflect across X-Y plane</option>
                 </select>
+              ) : transform.type === TransformType.Skew ? (
+                <>
+                  <select
+                    value={transform.skew_axis}
+                    onChange={(e) => {
+                      const v = e.currentTarget.value as Axis;
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.skew_axis = v;
+                        cloned[i] = t2;
+                        return cloned;
+                      });
+                    }}
+                  >
+                    <option value={Axis.X}>Skew Y-Z</option>
+                    <option value={Axis.Y}>Skew X-Z</option>
+                    <option value={Axis.Z}>Skew X-Y</option>
+                  </select>
+                  <TransformControl
+                    name="S"
+                    value={transform.s}
+                    range={1}
+                    on_input={(v) =>
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.s = v;
+                        cloned[i] = t2;
+                        return cloned;
+                      })
+                    }
+                  />
+                  <TransformControl
+                    name="T"
+                    value={transform.t}
+                    range={1}
+                    on_input={(v) =>
+                      set_transforms((t) => {
+                        const cloned = [...t];
+                        const t2 = clone(cloned[i] as typeof transform);
+                        t2.t = v;
+                        cloned[i] = t2;
+                        return cloned;
+                      })
+                    }
+                  />
+                </>
               ) : (
                 <>
                   <select
@@ -474,9 +561,9 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                       });
                     }}
                   >
-                    <option value="x">Rotate About X Axis</option>
-                    <option value="y">Rotate About Y Axis</option>
-                    <option value="z">Rotate About Z Axis</option>
+                    <option value={Axis.X}>Rotate About X Axis</option>
+                    <option value={Axis.Y}>Rotate About Y Axis</option>
+                    <option value={Axis.Z}>Rotate About Z Axis</option>
                   </select>
                   <TransformControl
                     name="Rotation (degrees)"
@@ -505,6 +592,7 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
           <option value={TransformType.Rotate}>Rotate</option>
           <option value={TransformType.Invert}>Invert</option>
           <option value={TransformType.Reflect}>Reflect</option>
+          <option value={TransformType.Skew}>Skew</option>
         </select>
         <button
           onClick={() => {
@@ -521,6 +609,8 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
                   )
                 : type === TransformType.Reflect
                 ? new ReflectTransform(Axis.X)
+                : type === TransformType.Skew
+                ? new SkewTransform(1, 1, Axis.X)
                 : new ScaleTransform(1, 1, 1),
             ]);
           }}
