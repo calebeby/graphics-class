@@ -10,6 +10,12 @@ import * as t from "./transforms";
 
 <p.TransformDemo client:load />
 
+This demo shows skew! The two parameters, S and T, control how the third axis affects the selected axes.
+
+<p.TransformDemo client:load initial_transforms={[
+  new t.SkewTransform(0.5, 0, t.Axis.X)
+]}/>
+
 Notice how a translation, followed by a rotation, followed by the inverse translation allows us to rotate about an axis displaced from the origin. In this example, try adjusting the y rotation and notice how it rotates around the axis through one of the edges of the pyramid.
 
 export const translateTransform = new t.TranslateTransform(0.2, 0, 0)

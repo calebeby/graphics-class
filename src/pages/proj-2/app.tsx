@@ -69,7 +69,7 @@ export const TransformDemo = ({
     perspective.m34 = perspective_amount;
 
     return perspective.multiply(combined);
-  }, [transforms]);
+  }, [transforms, perspective_amount]);
 
   useEffect(() => {
     transform_matrix_ref.current = transform_matrix;
@@ -96,270 +96,97 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
 `}</pre>
       {transforms.length > 0 && (
         <ol>
-          {transforms.map((transform, i) => (
-            <li key={transform.id} data-key={transform.id}>
-              <div class="transform-title">
-                <h2>
-                  {`(${i + 1}) `}
-                  <code>{transform.get_name(transforms)}</code>
-                </h2>
-                <div class="transform-builtin-controls">
-                  {transforms.length > 1 && (
-                    <>
-                      <button
-                        disabled={i === 0}
-                        onClick={() => {
-                          let tmp = transforms[i];
-                          transforms[i] = transforms[i - 1];
-                          transforms[i - 1] = tmp;
-                          set_transforms([...transforms]);
-                        }}
-                      >
-                        Move Up
-                      </button>
-                      <button
-                        disabled={i === transforms.length - 1}
-                        onClick={() => {
-                          let tmp = transforms[i];
-                          transforms[i] = transforms[i + 1];
-                          transforms[i + 1] = tmp;
-                          set_transforms([...transforms]);
-                        }}
-                      >
-                        Move Down
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => {
-                      set_transforms((all) =>
-                        all.filter((t) => t !== transform),
-                      );
-                    }}
-                  >
-                    Remove
-                  </button>
+          {transforms.map((transform, i) => {
+            const mutate_copy = <T extends Transform>(
+              mutate_fn: (t: T) => void,
+            ) =>
+              set_transforms((transforms) => {
+                const cloned = [...transforms];
+                const t_copy = clone(cloned[i] as T);
+                mutate_fn(t_copy);
+                cloned[i] = t_copy as any;
+                return cloned;
+              });
+            return (
+              <li key={transform.id} data-key={transform.id}>
+                <div class="transform-title">
+                  <h2>
+                    {`(${i + 1}) `}
+                    <code>{transform.get_name(transforms)}</code>
+                  </h2>
+                  <div class="transform-builtin-controls">
+                    {transforms.length > 1 && (
+                      <>
+                        <button
+                          disabled={i === 0}
+                          onClick={() => {
+                            let tmp = transforms[i];
+                            transforms[i] = transforms[i - 1];
+                            transforms[i - 1] = tmp;
+                            set_transforms([...transforms]);
+                          }}
+                        >
+                          Move Up
+                        </button>
+                        <button
+                          disabled={i === transforms.length - 1}
+                          onClick={() => {
+                            let tmp = transforms[i];
+                            transforms[i] = transforms[i + 1];
+                            transforms[i + 1] = tmp;
+                            set_transforms([...transforms]);
+                          }}
+                        >
+                          Move Down
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => {
+                        set_transforms((all) =>
+                          all.filter((t) => t !== transform),
+                        );
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
-              </div>
-              {transform.type === TransformType.Scale ? (
-                <>
-                  <TransformControl
-                    name="Scale X"
-                    value={transform.x}
-                    range={5}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.x = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
+                {transform.type === TransformType.Scale ? (
+                  <ScaleControls
+                    transform={transform}
+                    mutate_copy={mutate_copy}
                   />
-                  <TransformControl
-                    name="Scale Y"
-                    value={transform.y}
-                    range={5}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.y = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
+                ) : transform.type === TransformType.Translate ? (
+                  <TranslateControls
+                    transform={transform}
+                    mutate_copy={mutate_copy}
                   />
-                  <TransformControl
-                    name="Scale Z"
-                    value={transform.z}
-                    range={5}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.z = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
+                ) : transform.type === TransformType.Invert ? (
+                  <InvertControls
+                    transform={transform}
+                    mutate_copy={mutate_copy}
+                    transforms={transforms}
                   />
-                </>
-              ) : transform.type === TransformType.Translate ? (
-                <>
-                  <TransformControl
-                    name="Translate X"
-                    value={transform.x}
-                    range={0.4}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.x = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
+                ) : transform.type === TransformType.Reflect ? (
+                  <ReflectControls
+                    transform={transform}
+                    mutate_copy={mutate_copy}
                   />
-                  <TransformControl
-                    name="Translate Y"
-                    value={transform.y}
-                    range={0.4}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.y = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
+                ) : transform.type === TransformType.Skew ? (
+                  <SkewControls
+                    transform={transform}
+                    mutate_copy={mutate_copy}
                   />
-                  <TransformControl
-                    name="Translate Z"
-                    value={transform.z}
-                    range={0.4}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.z = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
-                  />
-                </>
-              ) : transform.type === TransformType.Invert ? (
-                transforms.filter((t) => t !== transform).length > 0 ? (
-                  <select
-                    value={transform.id_to_invert}
-                    onChange={(e) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.id_to_invert = Number(e.currentTarget.value);
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
-                  >
-                    {transforms
-                      .map((t, i) => [t, i] as const)
-                      .filter(([t]) => t !== transform)
-                      .map(([t, i]) => (
-                        <option value={t.id}>
-                          {`Invert (${i + 1}) ${t.get_name(transforms)}`}
-                        </option>
-                      ))}
-                  </select>
                 ) : (
-                  <p>Add another transform to invert it with this transform</p>
-                )
-              ) : transform.type === TransformType.Reflect ? (
-                <select
-                  value={transform.reflect_along_axis}
-                  onChange={(e) => {
-                    const v = e.currentTarget.value as Axis;
-                    set_transforms((t) => {
-                      const cloned = [...t];
-                      const t2 = clone(cloned[i] as typeof transform);
-                      t2.reflect_along_axis = v;
-                      cloned[i] = t2;
-                      return cloned;
-                    });
-                  }}
-                >
-                  <option value={Axis.X}>Reflect across Y-Z plane</option>
-                  <option value={Axis.Y}>Reflect across X-Z plane</option>
-                  <option value={Axis.Z}>Reflect across X-Y plane</option>
-                </select>
-              ) : transform.type === TransformType.Skew ? (
-                <>
-                  <select
-                    value={transform.skew_axis}
-                    onChange={(e) => {
-                      const v = e.currentTarget.value as Axis;
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.skew_axis = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      });
-                    }}
-                  >
-                    <option value={Axis.X}>Skew Y-Z</option>
-                    <option value={Axis.Y}>Skew X-Z</option>
-                    <option value={Axis.Z}>Skew X-Y</option>
-                  </select>
-                  <TransformControl
-                    name="S"
-                    value={transform.s}
-                    range={1}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.s = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
+                  <RotateControls
+                    transform={transform}
+                    mutate_copy={mutate_copy}
                   />
-                  <TransformControl
-                    name="T"
-                    value={transform.t}
-                    range={1}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.t = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
-                  />
-                </>
-              ) : (
-                <>
-                  <select
-                    value={transform.rotation_axis}
-                    onChange={(e) => {
-                      const v = e.currentTarget.value as Axis;
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.rotation_axis = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      });
-                    }}
-                  >
-                    <option value={Axis.X}>Rotate About X Axis</option>
-                    <option value={Axis.Y}>Rotate About Y Axis</option>
-                    <option value={Axis.Z}>Rotate About Z Axis</option>
-                  </select>
-                  <TransformControl
-                    name="Rotation (degrees)"
-                    value={transform.angle_degrees}
-                    range={180}
-                    on_input={(v) =>
-                      set_transforms((t) => {
-                        const cloned = [...t];
-                        const t2 = clone(cloned[i] as typeof transform);
-                        t2.angle_degrees = v;
-                        cloned[i] = t2;
-                        return cloned;
-                      })
-                    }
-                  />
-                </>
-              )}
-            </li>
-          ))}
+                )}
+              </li>
+            );
+          })}
         </ol>
       )}
       <div class="add-transform-controls">
@@ -395,7 +222,7 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
           Add Transform
         </button>
       </div>
-      <TransformControl
+      <RangeInput
         name="Perspective Amount"
         value={perspective_amount}
         range={1.5}
@@ -414,7 +241,7 @@ ${transform_matrix_str.slice(12, 16).join(" ")}
   );
 };
 
-const TransformControl = ({
+const RangeInput = ({
   name,
   value,
   range,
@@ -471,5 +298,227 @@ const TransformControl = ({
         <button onClick={() => set_is_animated(true)}>Animate</button>
       )}
     </label>
+  );
+};
+
+const RotateControls = ({
+  transform,
+  mutate_copy,
+}: {
+  transform: RotateTransform;
+  mutate_copy: (cb: (t: RotateTransform) => void) => void;
+}) => {
+  return (
+    <>
+      <select
+        value={transform.rotation_axis}
+        onChange={(e) => {
+          const axis = e.currentTarget.value as Axis;
+          mutate_copy((t) => {
+            t.rotation_axis = axis;
+          });
+        }}
+      >
+        <option value={Axis.X}>Rotate About X Axis</option>
+        <option value={Axis.Y}>Rotate About Y Axis</option>
+        <option value={Axis.Z}>Rotate About Z Axis</option>
+      </select>
+      <RangeInput
+        name="Rotation (degrees)"
+        value={transform.angle_degrees}
+        range={180}
+        on_input={(v) =>
+          mutate_copy((t) => {
+            t.angle_degrees = v;
+          })
+        }
+      />
+    </>
+  );
+};
+
+const SkewControls = ({
+  transform,
+  mutate_copy,
+}: {
+  transform: SkewTransform;
+  mutate_copy: (cb: (t: SkewTransform) => void) => void;
+}) => {
+  return (
+    <>
+      <select
+        value={transform.skew_axis}
+        onChange={(e) => {
+          const axis = e.currentTarget.value as Axis;
+          mutate_copy((t) => {
+            t.skew_axis = axis;
+          });
+        }}
+      >
+        <option value={Axis.X}>Skew Y-Z</option>
+        <option value={Axis.Y}>Skew X-Z</option>
+        <option value={Axis.Z}>Skew X-Y</option>
+      </select>
+      <RangeInput
+        name="S"
+        value={transform.s}
+        range={1}
+        on_input={(s) =>
+          mutate_copy((t) => {
+            t.s = s;
+          })
+        }
+      />
+      <RangeInput
+        name="T"
+        value={transform.t}
+        range={1}
+        on_input={(t) =>
+          mutate_copy((transform) => {
+            transform.t = t;
+          })
+        }
+      />
+    </>
+  );
+};
+
+const ReflectControls = ({
+  transform,
+  mutate_copy,
+}: {
+  transform: ReflectTransform;
+  mutate_copy: (cb: (t: ReflectTransform) => void) => void;
+}) => {
+  return (
+    <select
+      value={transform.reflect_along_axis}
+      onChange={(e) => {
+        const axis = e.currentTarget.value as Axis;
+        mutate_copy((t) => (t.reflect_along_axis = axis));
+      }}
+    >
+      <option value={Axis.X}>Reflect across Y-Z plane</option>
+      <option value={Axis.Y}>Reflect across X-Z plane</option>
+      <option value={Axis.Z}>Reflect across X-Y plane</option>
+    </select>
+  );
+};
+
+const InvertControls = ({
+  transform,
+  mutate_copy,
+  transforms,
+}: {
+  transform: InvertTransform;
+  transforms: Readonly<Transform>[];
+  mutate_copy: (cb: (t: InvertTransform) => void) => void;
+}) => {
+  return transforms.filter((t) => t !== transform).length > 0 ? (
+    <select
+      value={transform.id_to_invert}
+      onChange={(e) =>
+        mutate_copy((t) => {
+          t.id_to_invert = Number(e.currentTarget.value);
+        })
+      }
+    >
+      {transforms
+        .map((t, i) => [t, i] as const)
+        .filter(([t]) => t !== transform)
+        .map(([t, i]) => (
+          <option value={t.id}>
+            {`Invert (${i + 1}) ${t.get_name(transforms)}`}
+          </option>
+        ))}
+    </select>
+  ) : (
+    <p>Add another transform to invert it with this transform</p>
+  );
+};
+
+const TranslateControls = ({
+  transform,
+  mutate_copy,
+}: {
+  transform: TranslateTransform;
+  mutate_copy: (cb: (t: TranslateTransform) => void) => void;
+}) => {
+  return (
+    <>
+      <RangeInput
+        name="Translate X"
+        value={transform.x}
+        range={0.4}
+        on_input={(x) =>
+          mutate_copy((t) => {
+            t.x = x;
+          })
+        }
+      />
+      <RangeInput
+        name="Translate Y"
+        value={transform.y}
+        range={0.4}
+        on_input={(y) =>
+          mutate_copy((t) => {
+            t.y = y;
+          })
+        }
+      />
+      <RangeInput
+        name="Translate Z"
+        value={transform.z}
+        range={0.4}
+        on_input={(z) =>
+          mutate_copy((t) => {
+            t.z = z;
+          })
+        }
+      />
+    </>
+  );
+};
+
+const ScaleControls = ({
+  transform,
+  mutate_copy,
+}: {
+  transform: ScaleTransform;
+  mutate_copy: (cb: (t: ScaleTransform) => void) => void;
+}) => {
+  return (
+    <>
+      <RangeInput
+        name="Scale X"
+        value={transform.x}
+        range={5}
+        on_input={(x) =>
+          mutate_copy((t) => {
+            t.x = x;
+          })
+        }
+      />
+      <RangeInput
+        name="Scale Y"
+        value={transform.y}
+        range={5}
+        on_input={(y) =>
+          mutate_copy((t) => {
+            t.y = y;
+          })
+        }
+      />
+      <RangeInput
+        name="Scale Z"
+        value={transform.z}
+        range={5}
+        on_input={(z) =>
+          mutate_copy((t) => {
+            t.z = z;
+          })
+        }
+      />
+    </>
   );
 };
