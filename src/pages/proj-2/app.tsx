@@ -449,7 +449,7 @@ const TranslateControls = ({
       <RangeInput
         name="Translate X"
         value={transform.x}
-        range={0.4}
+        range={0.5}
         on_input={(x) =>
           mutate_copy((t) => {
             t.x = x;
@@ -459,7 +459,7 @@ const TranslateControls = ({
       <RangeInput
         name="Translate Y"
         value={transform.y}
-        range={0.4}
+        range={0.5}
         on_input={(y) =>
           mutate_copy((t) => {
             t.y = y;
@@ -469,7 +469,7 @@ const TranslateControls = ({
       <RangeInput
         name="Translate Z"
         value={transform.z}
-        range={0.4}
+        range={0.5}
         on_input={(z) =>
           mutate_copy((t) => {
             t.z = z;

@@ -8,7 +8,37 @@ import * as t from "./transforms";
 
 # Project 2 - Transformations Demo
 
+Here is the base demo, with no transforms set up initially! Feel free to fiddle with it, or read through the more guided demos below it.
+
 <p.TransformDemo client:load />
+
+## Translation
+
+This translates in the +Y direction (up on the screen). +X is towards the right of the screen, and +Z is into the screen. Observe that the +Z transform is not noticable until a perspective value is set.
+
+If the vertices end up outside the preset boundaries, the shapes will be clipped.
+
+<p.TransformDemo client:load initial_transforms={[
+  new t.TranslateTransform(0, 0.5, 0)
+]}/>
+
+## Scale
+
+Scaling lets us squish/stretch the shape on different axes.
+
+<p.TransformDemo client:load initial_transforms={[
+  new t.ScaleTransform(0.5, 1.5, 1.0)
+]}/>
+
+## Reflection
+
+This mirrors the vertices across one of the planes. In this case, it is reflected across the X axis. Notice that the produced transformation matrix is the same as when Scale X is set to -1 and Scale Y and Z are set to 1.
+
+<p.TransformDemo client:load initial_transforms={[
+  new t.ReflectTransform(t.Axis.X)
+]}/>
+
+## Skew
 
 This demo shows skew! The two parameters, S and T, control how the third axis affects the selected axes.
 
@@ -16,13 +46,25 @@ This demo shows skew! The two parameters, S and T, control how the third axis af
   new t.SkewTransform(0.5, 0, t.Axis.X)
 ]}/>
 
+## Rotation
+
+This demo rotates the pyramid 45° around the Y axis. Fiddle with the axis of rotation, animate the rotation angle, and try adding an additional rotation transform afterwards!
+
+<p.TransformDemo client:load initial_transforms={[
+  new t.RotateTransform(45, t.Axis.Y)
+]}/>
+
+## Inversion
+
+This demo uses inversion of a transform to perform a rotation around an axis offset from the origin.
+
 Notice how a translation, followed by a rotation, followed by the inverse translation allows us to rotate about an axis displaced from the origin. In this example, try adjusting the y rotation and notice how it rotates around the axis through one of the edges of the pyramid.
 
 export const translateTransform = new t.TranslateTransform(0.2, 0, 0)
-export const transforms = [
+
+<p.TransformDemo client:load initial_transforms={[
   translateTransform,
   new t.RotateTransform(50, t.Axis.Y),
   new t.InvertTransform(translateTransform.id)
-]
+]}/>
 
-<p.TransformDemo client:load initial_transforms={transforms}/>
