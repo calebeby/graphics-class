@@ -5,12 +5,12 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
-    "build-rust": "wasm-pack build --target web src/pages/proj-3 --release",
-    "build-rust:dev": "wasm-pack build --target web src/pages/proj-3 --dev",
+    "build": "npm run build-rust && astro build",
+    "build-rust": "node build-rust.mjs",
+    "build-rust:dev": "node build-rust.mjs --dev",
     "preview": "astro preview",
-    "lint:check": "eslint . && prettier --check . --plugin-search-dir=. --cache",
-    "lint": "eslint --fix . && prettier --write . --plugin-search-dir=. --cache",
+    "lint:check": "cargo check && eslint . && prettier --check . --plugin-search-dir=. --cache",
+    "lint": "cargo check && eslint --fix . && prettier --write . --plugin-search-dir=. --cache",
     "vite": "vite"
   },
   "dependencies": {
