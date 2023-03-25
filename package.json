@@ -6,6 +6,8 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
+    "build-rust": "wasm-pack build --target web src/pages/proj-3 --release",
+    "build-rust:dev": "wasm-pack build --target web src/pages/proj-3 --dev",
     "preview": "astro preview",
     "lint:check": "eslint . && prettier --check . --plugin-search-dir=. --cache",
     "lint": "eslint --fix . && prettier --write . --plugin-search-dir=. --cache",
@@ -13,22 +15,25 @@
   },
   "dependencies": {
     "@preact/signals": "^1.1.0",
-    "preact": "^10.7.3"
+    "preact": "^10.13.1"
   },
   "devDependencies": {
     "@astrojs/mdx": "^0.17.2",
-    "@astrojs/preact": "^2.0.3",
+    "@astrojs/preact": "^2.1.0",
+    "@babel/core": "^7.21.3",
     "@preact/preset-vite": "^2.5.0",
-    "@thednp/dommatrix": "^2.0.2",
-    "@types/node": "^18.14.1",
-    "@typescript-eslint/eslint-plugin": "^5.54.0",
-    "@typescript-eslint/parser": "^5.54.0",
-    "astro": "^2.0.15",
-    "eslint": "^8.35.0",
-    "prettier": "^2.8.4",
+    "@thednp/dommatrix": "^2.0.4",
+    "@types/node": "^18.15.7",
+    "@typescript-eslint/eslint-plugin": "^5.56.0",
+    "@typescript-eslint/parser": "^5.56.0",
+    "astro": "^2.1.7",
+    "eslint": "^8.36.0",
+    "prettier": "^2.8.7",
     "prettier-plugin-astro": "^0.8.0",
     "typescript": "^4.9.5",
-    "vite": "^4.1.4"
+    "vite": "^4.2.1",
+    "wasm-pack": "^0.11.0",
+    "watchlist": "^0.3.1"
   },
   "prettier": {
     "trailingComma": "all"
