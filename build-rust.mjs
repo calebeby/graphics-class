@@ -2,7 +2,9 @@ import { watch, run } from "watchlist";
 
 async function build() {
   console.log("running build..");
-  await run("wasm-pack build --target web src/pages/proj-3 --dev --weak-refs");
+  await run(
+    "wasm-pack build --target web src/projects/proj-3 --dev --weak-refs",
+  );
 }
 
 let queued_build = false;
