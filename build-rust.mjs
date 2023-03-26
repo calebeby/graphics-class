@@ -5,7 +5,7 @@ const is_dev = process.argv.includes("--dev");
 async function build() {
   console.log("running build..");
   await run(
-    `wasm-pack build --target web src/projects/proj-3 ${
+    `$HOME/.cargo/bin/wasm-pack build --target web src/projects/proj-3 ${
       is_dev ? "--dev" : "--release"
     } --weak-refs`,
   );
