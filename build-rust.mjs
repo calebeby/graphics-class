@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { watch } from "watchlist";
 
 const is_dev = process.argv.includes("--dev");
@@ -8,7 +10,11 @@ async function build() {
   const [cmd, ...args] = `wasm-pack build --target web src/projects/proj-3 ${
     is_dev ? "--dev" : "--release"
   } --weak-refs`.split(" ");
-  const spawned = spawn(cmd, args, { stdio: "inherit" });
+  const spawned = spawn(cmd, args, {
+    stdio: "inherit",
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    env: { PATH: `${process.env.PATH} ${join(homedir(), ".cargo", "bin")}` },
+  });
   await new Promise((resolve, reject) => {
     spawned.on("close", (code) => {
       if (code === 0) {
