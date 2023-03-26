@@ -8,12 +8,10 @@ const is_dev = process.argv.includes("--dev");
 async function build() {
   console.log("running build..");
   const wasm_pack_path = join(homedir(), ".cargo", "bin", "wasm-pack");
-  console.log("wasm pack path:", wasm_pack_path);
   const [cmd, ...args] =
     `${wasm_pack_path} build --target web src/projects/proj-3 ${
       is_dev ? "--dev" : "--release"
     } --weak-refs`.split(" ");
-  console.log("path is", process.env.PATH);
   const spawned = spawn(cmd, args, {
     stdio: "inherit",
     shell: "/usr/bin/bash",
