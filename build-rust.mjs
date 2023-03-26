@@ -16,7 +16,7 @@ async function build() {
   console.log("path is", process.env.PATH);
   const spawned = spawn(cmd, args, {
     stdio: "inherit",
-    shell: "/usr/bin/sh",
+    shell: "/usr/bin/bash",
     // eslint-disable-next-line @typescript-eslint/naming-convention
     env: { PATH: `${process.env.PATH}:${join(homedir(), ".cargo", "bin")}` },
   });
