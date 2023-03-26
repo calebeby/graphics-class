@@ -12,6 +12,12 @@ async function build() {
     `${wasm_pack_path} build --target web src/projects/proj-3 ${
       is_dev ? "--dev" : "--release"
     } --weak-refs`.split(" ");
+  const _spawn2 = spawn("echo", "hiii", {
+    stdio: "inherit",
+    shell: "/usr/bin/bash",
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    env: { PATH: `${process.env.PATH}:${join(homedir(), ".cargo", "bin")}` },
+  });
   const spawned = spawn(cmd, args, {
     stdio: "inherit",
     shell: "/usr/bin/bash",
