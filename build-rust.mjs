@@ -12,7 +12,7 @@ async function build() {
     `${wasm_pack_path} build --target web src/projects/proj-3 ${
       is_dev ? "--dev" : "--release"
     } --weak-refs`.split(" ");
-  const _spawn2 = spawn("echo", ["hiii"], {
+  const _spawn2 = spawn("wasm-pack", ["--help"], {
     stdio: "inherit",
     shell: "/usr/bin/bash",
     // eslint-disable-next-line @typescript-eslint/naming-convention
