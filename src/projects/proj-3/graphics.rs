@@ -35,7 +35,7 @@ impl GameState {
     }
 
     pub fn set_z(&mut self, z: f64) {
-        self.camera_position.z = z + 0.5;
+        self.camera_position.z = z;
     }
 
     pub fn set_rotation(&mut self, rot: f64) {
