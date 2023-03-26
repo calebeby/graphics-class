@@ -7,11 +7,9 @@ const is_dev = process.argv.includes("--dev");
 
 async function build() {
   console.log("running build..");
-  const wasm_pack_path = join(homedir(), ".cargo", "bin", "wasm-pack");
-  const [cmd, ...args] =
-    `${wasm_pack_path} build --target web src/projects/proj-3 ${
-      is_dev ? "--dev" : "--release"
-    } --weak-refs`.split(" ");
+  const [cmd, ...args] = `wasm-pack build --target web src/projects/proj-3 ${
+    is_dev ? "--dev" : "--release"
+  } --weak-refs`.split(" ");
   const _spawn2 = spawn("wasm-pack", ["--help"], {
     stdio: "inherit",
     shell: "/usr/bin/bash",
