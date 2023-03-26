@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "npm run build-rust && astro build",
-    "build-rust": "node build-rust.mjs",
-    "build-rust:dev": "node build-rust.mjs --dev",
+    "build": "astro build",
+    "build:rust": "node build-rust.mjs",
+    "build:rust:dev": "node build-rust.mjs --dev",
     "preview": "astro preview",
-    "lint:check": "cargo check && eslint . && prettier --check . --plugin-search-dir=. --cache",
-    "lint": "cargo check && eslint --fix . && prettier --write . --plugin-search-dir=. --cache",
+    "lint:js:check": "eslint . && prettier --check . --plugin-search-dir=. --cache --loglevel warn",
+    "lint:js": "eslint --fix . && prettier --write . --plugin-search-dir=. --cache --loglevel warn",
+    "lint:rust": "cargo clippy",
+    "type:js": "tsc",
+    "type:rust": "cargo check",
     "vite": "vite"
   },
   "dependencies": {

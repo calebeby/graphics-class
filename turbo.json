@@ -1,0 +1,56 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "dev": {
+      "dependsOn": ["build:rust"]
+    },
+    "build:rust": {
+      "inputs": ["Cargo.toml", "src/**/*.rs", "build-rust.mjs"],
+      "outputs": ["src/projects/*/pkg/**"]
+    },
+    "build": {
+      "inputs": [
+        "astro.config.mjs",
+        "src/**/*.tsx",
+        "src/**/*.ts",
+        "src/**/*.js"
+      ],
+      "outputs": ["dist/**"],
+      "dependsOn": ["build:rust"]
+    },
+    "lint:rust": {
+      "dependsOn": ["type:rust"],
+      "inputs": ["Cargo.toml", "src/**/*.rs"]
+    },
+    "lint:js": {
+      "inputs": ["package.json", "src/**/*.tsx", "src/**/*.ts", "src/**/*.js"]
+    },
+    "lint:js:check": {
+      "inputs": ["package.json", "src/**/*.tsx", "src/**/*.ts", "src/**/*.js"]
+    },
+    "type:rust": {
+      "inputs": ["Cargo.toml", "src/**/*.rs"]
+    },
+    "type:js": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "src/**/*.tsx",
+        "src/**/*.ts",
+        "src/**/*.js"
+      ]
+    },
+    "lint": {
+      "dependsOn": ["lint:rust", "lint:js"]
+    },
+    "type": {
+      "dependsOn": ["type:js", "type:rust"]
+    },
+    "check": {
+      "dependsOn": ["lint", "type"]
+    },
+    "ci-build": {
+      "dependsOn": ["check", "build"]
+    }
+  }
+}

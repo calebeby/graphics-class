@@ -11,9 +11,7 @@ export default defineConfig({
   vite: {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     optimizeDeps: {
-      entries: [],
-      include: ["preact"],
-      // disabled: true,
+      disabled: true,
     },
   },
   // vite: {
