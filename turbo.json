@@ -6,7 +6,7 @@
     },
     "build:rust": {
       "inputs": ["Cargo.toml", "src/**/*.rs", "build-rust.mjs"],
-      "outputs": ["src/projects/*/pkg/**"]
+      "outputs": ["src/projects/*/pkg/**", "target/**"]
     },
     "build": {
       "inputs": [
