@@ -7,9 +7,12 @@ const is_dev = process.argv.includes("--dev");
 
 async function build() {
   console.log("running build..");
-  const [cmd, ...args] = `wasm-pack build --target web src/projects/proj-3 ${
-    is_dev ? "--dev" : "--release"
-  } --weak-refs`.split(" ");
+  const wasm_pack_path = join(homedir(), ".cargo", "bin");
+  console.log("wasm pack path:", wasm_pack_path);
+  const [cmd, ...args] =
+    `${wasm_pack_path} build --target web src/projects/proj-3 ${
+      is_dev ? "--dev" : "--release"
+    } --weak-refs`.split(" ");
   const spawned = spawn(cmd, args, {
     stdio: "inherit",
     // eslint-disable-next-line @typescript-eslint/naming-convention
