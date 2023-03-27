@@ -1,7 +1,7 @@
 extern crate nalgebra as na;
 extern crate wasm_bindgen;
 
-use na::{point, vector, Matrix4, Point3, Scale3, UnitVector3};
+use na::{point, vector, Matrix4, Point3, Scale3, Translation3, UnitVector3};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -28,6 +28,24 @@ pub struct GameState {
 }
 
 #[wasm_bindgen]
+pub struct TransformMatrix(Matrix4<f64>);
+
+#[wasm_bindgen]
+impl TransformMatrix {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Self(Translation3::new(x, y, z).to_homogeneous())
+    }
+    pub fn to_f64_array(&self) -> Vec<f64> {
+        self.0.as_slice().to_vec()
+    }
+
+    pub fn times(&self, other: &TransformMatrix) -> TransformMatrix {
+        Self(self.0 * other.0)
+    }
+}
+
+#[wasm_bindgen]
 impl GameState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
@@ -43,26 +61,27 @@ impl GameState {
             UnitVector3::new_normalize(vector![rot.sin(), self.camera_direction.y, rot.cos()]);
     }
 
-    pub fn get_transform_matrix(&self) -> Vec<f64> {
+    pub fn world_to_camera(&self) -> TransformMatrix {
         let mut persp = Matrix4::identity();
         persp.m43 = 0.4;
-        let transform = Scale3::new(1.0, 1.0, 0.1).to_homogeneous()
-            * persp
-            * Matrix4::face_towards(
-                &self.camera_position,
-                &Point3::new(
-                    self.camera_position.x + self.camera_direction.x,
-                    self.camera_position.y + self.camera_direction.y,
-                    self.camera_position.z + self.camera_direction.z,
+        TransformMatrix(
+            Scale3::new(1.0, 1.0, 0.1).to_homogeneous()
+                * persp
+                * Matrix4::face_towards(
+                    &self.camera_position,
+                    &Point3::new(
+                        self.camera_position.x + self.camera_direction.x,
+                        self.camera_position.y + self.camera_direction.y,
+                        self.camera_position.z + self.camera_direction.z,
+                    ),
+                    &vector![0.0, 1.0, 0.0],
                 ),
-                &vector![0.0, 1.0, 0.0],
-            );
-
-        transform.as_slice().to_vec()
+        )
     }
 }
 
 impl Default for GameState {
+    #[inline]
     fn default() -> Self {
         Self {
             camera_position: point![0.0, 0.0, 0.0],

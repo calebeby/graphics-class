@@ -1,14 +1,11 @@
 import vsSource from "./vertex-shader.glsl?raw";
 import fsSource from "./fragment-shader.glsl?raw";
-import type { Face } from "./load-obj";
-import type { GameState } from "./pkg/proj_3";
+import type { GameState } from "./app";
 
 export const init_canvas = (
   canvas: HTMLCanvasElement,
   game_state: GameState,
-  faces: Face[],
 ) => {
-  const num_vertices = faces.reduce((count, face) => count + face.length, 0);
   const gl = canvas.getContext("webgl2")!;
   const rendering_program = init_shader_program(gl);
   const vertex_array_object = gl.createVertexArray();
@@ -20,24 +17,15 @@ export const init_canvas = (
 
   // Hardcoded to match the layout locations declared in the vertex shader
   const attrib_id_obj_vertex = 0;
-  const obj_vert_buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, obj_vert_buffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array(faces.flat().flat()),
-    gl.STATIC_DRAW,
-  ); // We only need to set this once (right now)
 
-  gl.enableVertexAttribArray(attrib_id_obj_vertex);
-  gl.bindBuffer(gl.ARRAY_BUFFER, obj_vert_buffer);
-  gl.vertexAttribPointer(
-    attrib_id_obj_vertex, // Attribute in question
-    4, // Number of elements (vec4)
-    gl.FLOAT, // Type of element
-    false, // Normalize? Nope
-    0, // No stride (steps between indexes)
-    0, // initial offset
-  );
+  for (const object of game_state.objects) {
+    object.obj_vert_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_vert_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, object.vertex_coords, gl.STATIC_DRAW); // We only need to set this once (right now)
+
+    gl.enableVertexAttribArray(attrib_id_obj_vertex);
+    gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_vert_buffer);
+  }
 
   //Depth Test Enable (only render things 'forward' of other things)
   gl.enable(gl.DEPTH_TEST);
@@ -66,23 +54,33 @@ export const init_canvas = (
 
   const render = () => {
     gl.useProgram(rendering_program);
-
-    gl.enableVertexAttribArray(attrib_id_obj_vertex);
-    gl.bindBuffer(gl.ARRAY_BUFFER, obj_vert_buffer);
-    gl.vertexAttribPointer(
-      attrib_id_obj_vertex, // Attribute in question
-      4, // Number of elements (vec4)
-      gl.FLOAT, // Type of element
-      false, // Normalize? Nope
-      0, // No stride (steps between indexes)
-      0, // initial offset
-    );
-    const transform_matrix = game_state.get_transform_matrix();
-    gl.uniformMatrix4fv(matrix_id_transform, false, transform_matrix, 0, 16);
     gl.clearBufferfv(gl.COLOR, 0, [0, 0.5, 1, 1]);
-    gl.drawArrays(gl.TRIANGLES, 0, num_vertices);
-    // Reset Attribute Array
-    gl.disableVertexAttribArray(attrib_id_obj_vertex);
+
+    const world_to_camera = game_state.rust_state.world_to_camera();
+    for (const object of game_state.objects) {
+      if (!object.obj_vert_buffer) throw new Error("missing obj_vert_buffer");
+      gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_vert_buffer);
+      gl.enableVertexAttribArray(attrib_id_obj_vertex);
+      gl.vertexAttribPointer(
+        attrib_id_obj_vertex, // Attribute in question
+        4, // Number of elements (vec4)
+        gl.FLOAT, // Type of element
+        false, // Normalize? Nope
+        0, // No stride (steps between indexes)
+        0, // initial offset
+      );
+      const transform_matrix = world_to_camera.times(object.transform_matrix);
+      gl.uniformMatrix4fv(
+        matrix_id_transform,
+        false,
+        transform_matrix.to_f64_array(),
+        0,
+        16,
+      );
+      gl.drawArrays(gl.TRIANGLES, 0, object.vertex_coords.length / 4);
+      // Reset Attribute Array
+      gl.disableVertexAttribArray(attrib_id_obj_vertex);
+    }
     frame_req = requestAnimationFrame(render);
   };
 

@@ -1,10 +1,24 @@
 import { useEffect, useErrorBoundary, useRef, useState } from "preact/hooks";
 import "./app.css";
 import { init_canvas } from "./graphics";
-import obj from "./monkey.obj?raw";
+import obj_monkey from "./monkey.obj?raw";
+import obj_cat from "./cat.obj?raw";
+import obj_ico from "./ico.obj?raw";
 import { load_obj } from "./load-obj";
 import * as rust from "./pkg";
-import type { GameState } from "./pkg";
+// This improves HMR for changes to rust file for some reason
+import "./pkg/proj_3_bg.wasm?url";
+
+export interface GameObject {
+  transform_matrix: rust.TransformMatrix;
+  vertex_coords: Float32Array;
+  obj_vert_buffer?: WebGLBuffer | null;
+}
+
+export interface GameState {
+  rust_state: rust.GameState;
+  objects: GameObject[];
+}
 
 interface Props {}
 
@@ -18,8 +32,23 @@ export const TransformDemo = ({}: Props) => {
 
   useEffect(() => {
     rust.default().then(() => {
-      const { GameState } = rust;
-      set_game_state(new GameState());
+      set_game_state({
+        rust_state: new rust.GameState(),
+        objects: [
+          {
+            transform_matrix: new rust.TransformMatrix(0, 0, 0),
+            vertex_coords: new Float32Array(load_obj(obj_monkey).flat().flat()),
+          },
+          {
+            transform_matrix: new rust.TransformMatrix(2.5, 0, -0.5),
+            vertex_coords: new Float32Array(load_obj(obj_cat).flat().flat()),
+          },
+          {
+            transform_matrix: new rust.TransformMatrix(-2.5, 0, 0.5),
+            vertex_coords: new Float32Array(load_obj(obj_ico).flat().flat()),
+          },
+        ],
+      });
     });
   }, [rust.default]);
 
@@ -27,7 +56,7 @@ export const TransformDemo = ({}: Props) => {
     const canvas = canvas_ref.current!;
 
     if (!game_state) return;
-    const { cleanup } = init_canvas(canvas, game_state, load_obj(obj));
+    const { cleanup } = init_canvas(canvas, game_state);
     return () => cleanup();
   }, [game_state]);
 
@@ -40,14 +69,18 @@ export const TransformDemo = ({}: Props) => {
         step={0.01}
         min={-5}
         max={5}
-        onInput={(e) => game_state?.set_z(e.currentTarget.valueAsNumber)}
+        onInput={(e) =>
+          game_state?.rust_state.set_z(e.currentTarget.valueAsNumber)
+        }
       />
       <input
         type="range"
         step={0.01}
         min={-5}
         max={5}
-        onInput={(e) => game_state?.set_rotation(e.currentTarget.valueAsNumber)}
+        onInput={(e) =>
+          game_state?.rust_state.set_rotation(e.currentTarget.valueAsNumber)
+        }
       />
     </div>
   );

@@ -9,7 +9,7 @@ async function build() {
   console.log("running build..");
   const [cmd, ...args] = `wasm-pack build --target web src/projects/proj-3 ${
     is_dev ? "--dev" : "--release"
-  } --weak-refs`.split(" ");
+  }`.split(" ");
   const spawned = spawn(cmd, args, {
     stdio: "inherit",
     shell: "/usr/bin/bash",
