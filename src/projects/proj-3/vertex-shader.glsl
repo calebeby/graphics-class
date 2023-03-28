@@ -10,7 +10,6 @@ layout(location = 0) in vec4 obj_vertex;
 layout(location = 1) in vec4 obj_normal;
 
 void main(void) {
-  float scale = 0.4;
   vec4 base = transform * obj_vertex;
 
   gl_Position = base;

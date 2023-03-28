@@ -18,11 +18,17 @@ export interface GameObject {
 export interface GameState {
   rust_state: rust.GameState;
   objects: GameObject[];
+  input_state: {
+    input_w: boolean;
+    input_a: boolean;
+    input_s: boolean;
+    input_d: boolean;
+  };
 }
 
 interface Props {}
 
-export const TransformDemo = ({}: Props) => {
+export const Proj3 = ({}: Props) => {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   const [error, _reset_error] = useErrorBoundary();
   const canvas_ref = useRef<HTMLCanvasElement>(null);
@@ -48,6 +54,12 @@ export const TransformDemo = ({}: Props) => {
             vertex_coords: new Float32Array(load_obj(obj_ico).flat().flat()),
           },
         ],
+        input_state: {
+          input_w: false,
+          input_a: false,
+          input_s: false,
+          input_d: false,
+        },
       });
     });
   }, [rust.default]);
@@ -64,24 +76,54 @@ export const TransformDemo = ({}: Props) => {
     <div class="transform-demo">
       {error}
       <canvas ref={canvas_ref}></canvas>
-      <input
-        type="range"
-        step={0.01}
-        min={-5}
-        max={5}
-        onInput={(e) =>
-          game_state?.rust_state.set_z(e.currentTarget.valueAsNumber)
-        }
-      />
-      <input
-        type="range"
-        step={0.01}
-        min={-5}
-        max={5}
-        onInput={(e) =>
-          game_state?.rust_state.set_rotation(e.currentTarget.valueAsNumber)
-        }
-      />
+      <label>
+        x
+        <input
+          type="range"
+          step={0.01}
+          min={-5}
+          max={5}
+          onInput={(e) =>
+            game_state?.rust_state.set_x(e.currentTarget.valueAsNumber)
+          }
+        />
+      </label>
+      <label>
+        y
+        <input
+          type="range"
+          step={0.01}
+          min={-5}
+          max={5}
+          onInput={(e) =>
+            game_state?.rust_state.set_y(e.currentTarget.valueAsNumber)
+          }
+        />
+      </label>
+      <label>
+        z
+        <input
+          type="range"
+          step={0.01}
+          min={-5}
+          max={5}
+          onInput={(e) =>
+            game_state?.rust_state.set_z(e.currentTarget.valueAsNumber)
+          }
+        />
+      </label>
+      <label>
+        rotation
+        <input
+          type="range"
+          step={0.01}
+          min={-5}
+          max={5}
+          onInput={(e) =>
+            game_state?.rust_state.set_rotation(e.currentTarget.valueAsNumber)
+          }
+        />
+      </label>
     </div>
   );
 };

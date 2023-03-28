@@ -52,7 +52,34 @@ export const init_canvas = (
   const resize_observer = new ResizeObserver(resize_listener);
   resize_observer.observe(canvas, {});
 
+  const key_listener = (is_down: boolean) => (event: KeyboardEvent) => {
+    if (event.key === "w") {
+      game_state.input_state.input_w = is_down;
+    } else if (event.key === "a") {
+      game_state.input_state.input_a = is_down;
+    } else if (event.key === "s") {
+      game_state.input_state.input_s = is_down;
+    } else if (event.key === "d") {
+      game_state.input_state.input_d = is_down;
+    }
+  };
+  const key_down_listener = key_listener(true);
+  const key_up_listener = key_listener(false);
+  window.addEventListener("keydown", key_down_listener);
+  window.addEventListener("keyup", key_up_listener);
+
+  let last_render_time = new Date().getTime();
+
   const render = () => {
+    const now = new Date().getTime();
+    game_state.rust_state.update(
+      game_state.input_state.input_w,
+      game_state.input_state.input_a,
+      game_state.input_state.input_s,
+      game_state.input_state.input_d,
+      now - last_render_time,
+    );
+    last_render_time = now;
     gl.useProgram(rendering_program);
     gl.clearBufferfv(gl.COLOR, 0, [0, 0.5, 1, 1]);
 
@@ -93,6 +120,8 @@ export const init_canvas = (
       gl.deleteVertexArray(vertex_array_object);
       gl.deleteProgram(rendering_program);
       resize_observer.unobserve(canvas);
+      window.removeEventListener("keydown", key_down_listener);
+      window.removeEventListener("keyup", key_up_listener);
     },
   };
 };
