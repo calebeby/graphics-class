@@ -1,7 +1,7 @@
 import { useEffect, useErrorBoundary, useRef, useState } from "preact/hooks";
 import "./app.css";
 import { init_canvas } from "./graphics";
-import obj_monkey from "./monkey.obj?raw";
+import obj_kermit from "./kermit.obj?raw";
 import obj_cat from "./cat.obj?raw";
 import obj_ico from "./ico.obj?raw";
 import { load_obj } from "./load-obj";
@@ -45,7 +45,7 @@ export const Proj3 = ({}: Props) => {
         objects: [
           {
             transform_matrix: new rust.TransformMatrix(0, 0, 0),
-            vertex_coords: new Float32Array(load_obj(obj_monkey).flat().flat()),
+            vertex_coords: new Float32Array(load_obj(obj_kermit).flat().flat()),
           },
           {
             transform_matrix: new rust.TransformMatrix(2.5, 0, 0.0),
