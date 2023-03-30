@@ -81,7 +81,7 @@ impl GameState {
                 + vector![0.0, -angle_y.sin(), -angle_y.cos()],
         );
         self.camera_position += self.camera_velocity * dt;
-        let accel = 10.0;
+        let accel = 15.0;
         let decel = 0.15;
         let forwards = self.camera_direction.into_inner();
         if input_w {
