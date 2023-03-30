@@ -46,13 +46,17 @@ export const Proj3 = ({}: Props) => {
             vertex_coords: new Float32Array(load_obj(obj_monkey).flat().flat()),
           },
           {
-            transform_matrix: new rust.TransformMatrix(2.5, 0, -0.5),
+            transform_matrix: new rust.TransformMatrix(2.5, 0, 0.0),
             vertex_coords: new Float32Array(load_obj(obj_cat).flat().flat()),
           },
           {
-            transform_matrix: new rust.TransformMatrix(-2.5, 0, 0.5),
+            transform_matrix: new rust.TransformMatrix(-2.5, 0, 0.0),
             vertex_coords: new Float32Array(load_obj(obj_ico).flat().flat()),
           },
+          // {
+          //   transform_matrix: new rust.TransformMatrix(0, 0, 0),
+          //   vertex_coords: new Float32Array(load_obj(obj_ico).flat().flat()),
+          // },
         ],
         input_state: {
           input_w: false,
@@ -76,54 +80,6 @@ export const Proj3 = ({}: Props) => {
     <div class="transform-demo">
       {error}
       <canvas ref={canvas_ref}></canvas>
-      <label>
-        x
-        <input
-          type="range"
-          step={0.01}
-          min={-5}
-          max={5}
-          onInput={(e) =>
-            game_state?.rust_state.set_x(e.currentTarget.valueAsNumber)
-          }
-        />
-      </label>
-      <label>
-        y
-        <input
-          type="range"
-          step={0.01}
-          min={-5}
-          max={5}
-          onInput={(e) =>
-            game_state?.rust_state.set_y(e.currentTarget.valueAsNumber)
-          }
-        />
-      </label>
-      <label>
-        z
-        <input
-          type="range"
-          step={0.01}
-          min={-5}
-          max={5}
-          onInput={(e) =>
-            game_state?.rust_state.set_z(e.currentTarget.valueAsNumber)
-          }
-        />
-      </label>
-      <label>
-        rotation
-        <input
-          type="range"
-          step={0.01}
-          min={-5}
-          max={5}
-          onInput={(e) =>
-            game_state?.rust_state.set_rotation(e.currentTarget.valueAsNumber)
-          }
-        />
-      </label>
     </div>
   );
 };

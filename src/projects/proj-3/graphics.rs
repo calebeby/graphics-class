@@ -4,7 +4,7 @@ extern crate wasm_bindgen;
 use na::{point, vector, Matrix4, Point3, Scale3, Translation3, UnitVector3, Vector3};
 use wasm_bindgen::prelude::*;
 
-static UP: Vector3<f64> = vector![0.0, 1.0, 0.0];
+static UP: Vector3<f64> = vector![0.0, -1.0, 0.0];
 
 #[wasm_bindgen]
 extern "C" {
@@ -30,6 +30,8 @@ pub struct GameState {
     camera_velocity: Vector3<f64>,
 }
 
+/// A little wrapper around the nalgebra matrix4 class, for JS use,
+/// so we only have to generate binding code for the methods we actually need.
 #[wasm_bindgen]
 pub struct TransformMatrix(Matrix4<f64>);
 
@@ -42,7 +44,6 @@ impl TransformMatrix {
     pub fn to_f64_array(&self) -> Vec<f64> {
         self.0.as_slice().to_vec()
     }
-
     pub fn times(&self, other: &TransformMatrix) -> TransformMatrix {
         Self(self.0 * other.0)
     }
@@ -84,66 +85,29 @@ impl GameState {
         } else {
             self.camera_velocity -= decel * (self.camera_velocity.dot(&right)) * right;
         }
-        // console_log!("camera position, {:?}", self.camera_position);
-        // console_log!(
-        //     "camera direction, {:?}, camera position: {:?}",
-        //     self.camera_direction,
-        //     self.camera_position
-        // );
-    }
-
-    pub fn set_x(&mut self, x: f64) {
-        self.camera_position.x = x;
-    }
-
-    pub fn set_y(&mut self, y: f64) {
-        self.camera_position.y = y;
-    }
-
-    pub fn set_z(&mut self, z: f64) {
-        self.camera_position.z = z;
-    }
-
-    pub fn set_rotation(&mut self, rot: f64) {
-        self.camera_direction =
-            UnitVector3::new_normalize(vector![rot.sin(), self.camera_direction.y, rot.cos()]);
     }
 
     pub fn world_to_camera(&self) -> TransformMatrix {
-        let mut persp = Matrix4::identity();
-        persp.m43 = 0.4;
-        TransformMatrix(
-            // Scale everything in the z direction down
-            // (does not affect the positions of any vertices)
-            // This just reduces the scope of z values to reduce clipping
-            Scale3::new(1.0, 1.0, 0.1).to_homogeneous()
-                * persp
-                * Matrix4::new_translation(&Vector3::new(
-                    self.camera_position.x,
-                    self.camera_position.y,
-                    self.camera_position.z,
-                ))
-                * Matrix4::look_at_rh(
-                    // &(self.camera_position / (self.camera_position - Point3::origin()).magnitude()),
-                    // &Point3::origin(),
-                    &Point3::origin(),
-                    &Point3::new(
-                        self.camera_direction.x,
-                        self.camera_direction.y,
-                        self.camera_direction.z,
-                    ),
-                    &UP,
+        // Scale everything in the z direction down
+        // (does not affect the positions of any vertices)
+        // This just reduces the scope of z values to reduce clipping
+        let transforms = Scale3::new(1.0, 1.0, 0.01).to_homogeneous()
+            * Matrix4::new_perspective(1.0, 30.0, 0.01, 100.0)
+            * Matrix4::look_at_rh(
+                &Point3::origin(),
+                &Point3::new(
+                    self.camera_direction.x,
+                    self.camera_direction.y,
+                    self.camera_direction.z,
                 ),
-            // * Matrix4::face_towards(
-            //     &self.camera_position,
-            //     &Point3::new(
-            //         self.camera_position.x + self.camera_direction.x,
-            //         self.camera_position.y + self.camera_direction.y,
-            //         self.camera_position.z + self.camera_direction.z,
-            //     ),
-            //     &vector![0.0, 1.0, 0.0],
-            // ),
-        )
+                &UP,
+            )
+            * Matrix4::new_translation(&Vector3::new(
+                self.camera_position.x,
+                self.camera_position.y,
+                self.camera_position.z,
+            ));
+        TransformMatrix(transforms)
     }
 }
 
@@ -151,8 +115,8 @@ impl Default for GameState {
     #[inline]
     fn default() -> Self {
         Self {
-            camera_position: point![0.0, 0.0, 0.0],
-            camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, 1.0]),
+            camera_position: point![0.0, 0.0, -2.0],
+            camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, -1.0]),
             camera_velocity: Vector3::zeros(),
         }
     }
