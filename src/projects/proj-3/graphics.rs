@@ -80,10 +80,9 @@ impl GameState {
             vector![angle_x.sin(), 0.0, -angle_x.cos()]
                 + vector![0.0, -angle_y.sin(), -angle_y.cos()],
         );
-        console_log!("cam dir: {:?}", self.camera_direction);
         self.camera_position += self.camera_velocity * dt;
-        let accel = 5.0;
-        let decel = 0.05;
+        let accel = 10.0;
+        let decel = 0.15;
         let forwards = self.camera_direction.into_inner();
         if input_w {
             self.camera_velocity -= accel * dt * forwards;
@@ -100,6 +99,11 @@ impl GameState {
         } else {
             self.camera_velocity -= decel * (self.camera_velocity.dot(&right)) * right;
         }
+        // There was a bug where when turning the camera it could continue drifting
+        // Since the third component of the "camera directions" didn't have code to handle deceleration
+        // So I added this
+        let camera_up = forwards.cross(&right);
+        self.camera_velocity -= decel * (self.camera_velocity.dot(&camera_up)) * camera_up;
     }
 
     pub fn world_to_camera(&self) -> TransformMatrix {
