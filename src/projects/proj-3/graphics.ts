@@ -63,10 +63,18 @@ export const init_canvas = (
       game_state.input_state.input_d = is_down;
     }
   };
+  const mouse_listener = (event: MouseEvent) => {
+    // Normalize the mouse position into x and y coordinates between -1 and 1
+    game_state.input_state.cursor_x =
+      (2 * event.offsetX) / canvas.offsetWidth - 1;
+    game_state.input_state.cursor_y =
+      (2 * event.offsetY) / canvas.offsetHeight - 1;
+  };
   const key_down_listener = key_listener(true);
   const key_up_listener = key_listener(false);
   window.addEventListener("keydown", key_down_listener);
   window.addEventListener("keyup", key_up_listener);
+  canvas.addEventListener("mousemove", mouse_listener);
 
   let last_render_time = new Date().getTime();
 
@@ -77,6 +85,8 @@ export const init_canvas = (
       game_state.input_state.input_a,
       game_state.input_state.input_s,
       game_state.input_state.input_d,
+      game_state.input_state.cursor_x,
+      game_state.input_state.cursor_y,
       now - last_render_time,
     );
     last_render_time = now;
@@ -122,6 +132,7 @@ export const init_canvas = (
       resize_observer.unobserve(canvas);
       window.removeEventListener("keydown", key_down_listener);
       window.removeEventListener("keyup", key_up_listener);
+      canvas.removeEventListener("mousemove", mouse_listener);
     },
   };
 };

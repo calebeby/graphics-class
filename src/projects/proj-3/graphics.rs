@@ -1,6 +1,8 @@
 extern crate nalgebra as na;
 extern crate wasm_bindgen;
 
+use std::f64::consts::PI;
+
 use na::{point, vector, Matrix4, Point3, Scale3, Translation3, UnitVector3, Vector3};
 use wasm_bindgen::prelude::*;
 
@@ -56,16 +58,29 @@ impl GameState {
         Default::default()
     }
 
+    // It would be a good idea to have this accept the arguments as a struct,
+    // but then I'd have to deal with JS binding generation for that struct.
+    #[allow(clippy::too_many_arguments)]
     pub fn update(
         &mut self,
         input_w: bool,
         input_a: bool,
         input_s: bool,
         input_d: bool,
+        cursor_x: f64,
+        cursor_y: f64,
         delta_time_ms: usize,
     ) {
         // In seconds, time since last render
         let dt = delta_time_ms as f64 / 1000.0;
+        // Ranges from -pi to +pi
+        let angle_x = cursor_x * PI;
+        let angle_y = cursor_y * PI;
+        self.camera_direction = UnitVector3::new_normalize(
+            vector![angle_x.sin(), 0.0, -angle_x.cos()]
+                + vector![0.0, -angle_y.sin(), -angle_y.cos()],
+        );
+        console_log!("cam dir: {:?}", self.camera_direction);
         self.camera_position += self.camera_velocity * dt;
         let accel = 5.0;
         let decel = 0.05;

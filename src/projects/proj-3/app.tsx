@@ -19,6 +19,8 @@ export interface GameState {
   rust_state: rust.GameState;
   objects: GameObject[];
   input_state: {
+    cursor_x: number;
+    cursor_y: number;
     input_w: boolean;
     input_a: boolean;
     input_s: boolean;
@@ -53,12 +55,10 @@ export const Proj3 = ({}: Props) => {
             transform_matrix: new rust.TransformMatrix(-2.5, 0, 0.0),
             vertex_coords: new Float32Array(load_obj(obj_ico).flat().flat()),
           },
-          // {
-          //   transform_matrix: new rust.TransformMatrix(0, 0, 0),
-          //   vertex_coords: new Float32Array(load_obj(obj_ico).flat().flat()),
-          // },
         ],
         input_state: {
+          cursor_x: 0.0,
+          cursor_y: 0.0,
           input_w: false,
           input_a: false,
           input_s: false,
