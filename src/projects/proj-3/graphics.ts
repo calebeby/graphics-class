@@ -1,6 +1,7 @@
 import vsSource from "./vertex-shader.glsl?raw";
 import fsSource from "./fragment-shader.glsl?raw";
 import type { GameState } from "./app";
+import * as rust from "./pkg";
 
 export const init_canvas = (
   canvas: HTMLCanvasElement,
@@ -80,6 +81,11 @@ export const init_canvas = (
 
   const render = () => {
     const now = new Date().getTime();
+    game_state.objects[1].transform_matrix = new rust.TransformMatrix(
+      2.5,
+      Math.sin(now / 1000),
+      0.0,
+    );
     game_state.rust_state.update(
       game_state.input_state.input_w,
       game_state.input_state.input_a,
