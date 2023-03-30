@@ -81,6 +81,7 @@ export const init_canvas = (
 
   const render = () => {
     const now = new Date().getTime();
+    // Animate the cat
     game_state.objects[1].transform_matrix = new rust.TransformMatrix(
       2.5,
       Math.sin(now / 1000),
