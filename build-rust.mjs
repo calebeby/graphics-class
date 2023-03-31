@@ -2,14 +2,24 @@ import { spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { watch } from "watchlist";
+import * as fs from "node:fs/promises";
 
+const args = process.argv.slice(2).filter((argv) => !argv.startsWith("--dev"));
 const is_dev = process.argv.includes("--dev");
 
-async function build() {
-  console.log("running build..");
-  const [cmd, ...args] = `wasm-pack build --target web src/projects/proj-3 ${
-    is_dev ? "--dev" : "--release"
-  }`.split(" ");
+const projects =
+  args.length > 0
+    ? args
+    : (await fs.readdir("src/projects")).filter(
+        (p) => p !== "proj-1" && p !== "proj-2" && !p.startsWith("--"),
+      );
+
+async function build(project) {
+  console.log(`\nRunning build (${project})...`);
+  const [cmd, ...args] =
+    `wasm-pack build --target web src/projects/${project} ${
+      is_dev ? "--dev" : "--release"
+    }`.split(" ");
   const spawned = spawn(cmd, args, {
     stdio: "inherit",
     shell: "/usr/bin/bash",
@@ -33,32 +43,34 @@ async function build() {
   });
 }
 
+for (const project of projects) {
+  await build(project);
+}
 if (is_dev) {
-  let queued_build = false;
+  for (const project of projects) {
+    let queued_build = false;
 
-  const handle_change = () => {
-    if (queued_build) return;
-    setTimeout(() => {
-      queued_build = false;
-      build();
-    }, 1);
-    queued_build = true;
-  };
+    const handle_change = () => {
+      if (queued_build) return;
+      setTimeout(() => {
+        queued_build = false;
+        build(project);
+      }, 1);
+      queued_build = true;
+    };
 
-  await watch(["src"], handle_change, {
-    ignore: [
-      "node_modules",
-      "package.json",
-      ".gitignore",
-      /\.ts$/,
-      /\.js$/,
-      /\.wasm$/,
-      "target",
-      "Session.vim",
-    ],
-    clear: true,
-    eager: true,
-  });
-} else {
-  await build();
+    await watch([`src/projects/${project}`], handle_change, {
+      ignore: [
+        "node_modules",
+        "package.json",
+        ".gitignore",
+        /\.ts$/,
+        /\.js$/,
+        /\.wasm$/,
+        "target",
+        "Session.vim",
+      ],
+      clear: false,
+    });
+  }
 }
