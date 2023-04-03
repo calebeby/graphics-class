@@ -1,10 +1,31 @@
-extern crate nalgebra as na;
-extern crate wasm_bindgen;
+pub(crate) extern crate nalgebra;
+pub(crate) extern crate num_traits;
+pub(crate) extern crate wasm_bindgen;
+mod bounding_box;
+mod face;
+mod ray;
 
 use std::f64::consts::PI;
 
-use na::{point, vector, Matrix4, Point3, Scale3, Translation3, UnitVector3, Vector3};
+use nalgebra::{point, vector, Matrix4, Point3, Scale3, Translation3, UnitVector3, Vector3};
 use wasm_bindgen::prelude::*;
+
+pub(crate) trait Number:
+    'static
+    + std::fmt::Debug
+    + Copy
+    + nalgebra::ClosedAdd
+    + nalgebra::ClosedSub
+    + nalgebra::ClosedMul
+    + num_traits::identities::Zero
+    + nalgebra::SimdComplexField
+    + nalgebra::SimdRealField
+    + num_traits::Float
+    + std::convert::Into<f64>
+{
+}
+impl Number for f64 {}
+impl Number for f32 {}
 
 static UP: Vector3<f64> = vector![0.0, -1.0, 0.0];
 
@@ -139,4 +160,74 @@ impl Default for GameState {
             camera_velocity: Vector3::zeros(),
         }
     }
+}
+
+/// Breaks a polygon into a bunch of triangle points (so they can be psased directly into webgl)
+fn break_into_triangles<'pts, Point>(face_points: &[&'pts Point]) -> Vec<&'pts Point> {
+    face_points[1..]
+        .windows(2)
+        .flat_map(|pair_of_points| vec![face_points[0], pair_of_points[0], pair_of_points[1]])
+        .collect()
+}
+
+#[wasm_bindgen]
+pub fn generate_maze_points() -> Vec<f32> {
+    let front_right_bottom = Point3::new(0.0, 0.0, 1.0);
+    let front_left_bottom = Point3::new(-1.0, 0.0, 1.0);
+    let front_right_top = Point3::new(0.0, 1.0, 1.0);
+    let front_left_top = Point3::new(-1.0, 1.0, 1.0);
+
+    let back_right_bottom = Point3::new(0.0, 0.0, 0.0);
+    let back_left_bottom = Point3::new(-1.0, 0.0, 0.0);
+    let back_right_top = Point3::new(0.0, 1.0, 0.0);
+    let back_left_top = Point3::new(-1.0, 1.0, 0.0);
+
+    let faces = [
+        [
+            &front_right_top,
+            &front_right_bottom,
+            &front_left_bottom,
+            &front_left_top,
+        ],
+        [
+            &front_right_top,
+            &back_right_top,
+            &back_right_bottom,
+            &front_right_bottom,
+        ],
+        [
+            &front_left_top,
+            &back_left_top,
+            &back_left_bottom,
+            &front_left_bottom,
+        ],
+        [
+            &front_right_top,
+            &back_right_top,
+            &back_left_top,
+            &front_left_top,
+        ],
+        [
+            &front_right_bottom,
+            &back_right_bottom,
+            &back_left_bottom,
+            &front_left_bottom,
+        ],
+        [
+            &back_right_top,
+            &back_right_bottom,
+            &back_left_bottom,
+            &back_left_top,
+        ],
+    ];
+
+    let points: Vec<_> = faces
+        .iter()
+        .flat_map(|face| break_into_triangles(face))
+        .collect();
+
+    points
+        .iter()
+        .flat_map(|point| [point.x, point.y, point.z, 1.0])
+        .collect()
 }

@@ -1,10 +1,6 @@
 import { useEffect, useErrorBoundary, useRef, useState } from "preact/hooks";
 import "./app.css";
 import { init_canvas } from "./graphics";
-import obj_kermit from "./kermit.obj?raw";
-import obj_cat from "./cat.obj?raw";
-import obj_ico from "./ico.obj?raw";
-import { load_obj } from "./load-obj";
 import * as rust from "./pkg";
 // This improves HMR for changes to rust file for some reason
 import "./pkg/midterm_bg.wasm?url";
@@ -45,15 +41,7 @@ export const Midterm = ({}: Props) => {
         objects: [
           {
             transform_matrix: new rust.TransformMatrix(0, 0, 0),
-            vertex_coords: new Float32Array(load_obj(obj_kermit).flat().flat()),
-          },
-          {
-            transform_matrix: new rust.TransformMatrix(2.5, 0, 0.0),
-            vertex_coords: new Float32Array(load_obj(obj_cat).flat().flat()),
-          },
-          {
-            transform_matrix: new rust.TransformMatrix(-2.5, 0, 0.0),
-            vertex_coords: new Float32Array(load_obj(obj_ico).flat().flat()),
+            vertex_coords: rust.generate_maze_points(),
           },
         ],
         input_state: {

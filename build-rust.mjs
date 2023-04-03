@@ -23,8 +23,12 @@ async function build(project) {
   const spawned = spawn(cmd, args, {
     stdio: "inherit",
     shell: "/usr/bin/bash",
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    env: { PATH: `${process.env.PATH}:${join(homedir(), ".cargo", "bin")}` },
+    env: {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      PATH: `${process.env.PATH}:${join(homedir(), ".cargo", "bin")}`,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      CARGO_TERM_COLOR: "always",
+    },
   });
   await new Promise((resolve, reject) => {
     spawned.on("close", (code) => {
