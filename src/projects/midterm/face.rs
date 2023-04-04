@@ -64,6 +64,11 @@ impl<T: Number> Face<T> {
     }
 
     #[inline]
+    pub(crate) fn points_relative(&self) -> &[Point2<T>] {
+        &self.points_relative
+    }
+
+    #[inline]
     pub(crate) fn origin(&self) -> &Point3<T> {
         &self.points[0]
     }

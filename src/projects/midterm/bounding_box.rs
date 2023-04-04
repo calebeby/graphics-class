@@ -3,8 +3,8 @@ use nalgebra::Point;
 
 #[derive(Debug)]
 pub(crate) struct BoundingBox<T: Number, const DIM: usize> {
-    min_pt: Point<T, { DIM }>,
-    max_pt: Point<T, { DIM }>,
+    pub(crate) min_pt: Point<T, { DIM }>,
+    pub(crate) max_pt: Point<T, { DIM }>,
 }
 
 impl<T: Number, const DIM: usize> BoundingBox<T, { DIM }> {
