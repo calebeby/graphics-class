@@ -25,7 +25,7 @@ impl<T: Number, const DIM: usize> Ray<T, { DIM }> {
 
 impl<T: Number> Ray<T, 2> {
     pub(crate) fn ray_intersection(&self, other: &Ray<T, 2>) -> Option<Point<T, 2>> {
-        let intersection = {
+        let intersection: Point2<T> = {
             // 1 is self, 2 is other
 
             // y = m1 (x - x1) + y1
@@ -80,8 +80,15 @@ impl<T: Number> Ray<T, 2> {
                     Some(Point2::new(x, self.start.y + m_1 * (x - self.start.x)))
                 }
             }
-        };
-        return intersection;
+        }?;
+
+        if self.bounding_box().includes_point(&intersection)
+            && other.bounding_box().includes_point(&intersection)
+        {
+            Some(intersection)
+        } else {
+            None
+        }
     }
 }
 
@@ -284,5 +291,13 @@ mod tests {
         let diagonal_ray_1 = Ray::new(point!(-0.5, 0.0), point!(0.5, 1.0));
         assert_intersection!(vert_ray, diagonal_ray_1, Some(point!(0.0, 0.5)));
         assert_intersection!(horiz_ray, diagonal_ray_1, Some(point!(0.0, 0.5)));
+        let diagonal_ray_2 = Ray::new(point!(0.5, 0.0), point!(-0.5, 1.0));
+        assert_intersection!(horiz_ray, diagonal_ray_2, Some(point!(0.0, 0.5)));
+
+        assert_intersection!(
+            Ray::new(point!(0.0, 0.0), point!(0.0, 0.5)),
+            Ray::new(point!(0.1, 0.1), point!(0.5, 0.5)),
+            None
+        );
     }
 }

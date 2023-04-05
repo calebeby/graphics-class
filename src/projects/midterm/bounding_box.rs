@@ -38,15 +38,26 @@ impl<T: Number, const DIM: usize> BoundingBox<T, { DIM }> {
             }
         }
 
-        let mut overlaps = true;
-        // Every range (x, y, z) must overlap for the two bounding boxes
+        // Every dimension/axis (x, y, z...) must overlap for the two bounding boxes
         for dim in 0..DIM {
-            overlaps &= range_overlaps(
+            if !range_overlaps(
                 (self.min_pt[dim], self.max_pt[dim]),
                 (other.min_pt[dim], other.max_pt[dim]),
-            );
+            ) {
+                return false;
+            }
         }
-        overlaps
+        true
+    }
+
+    pub(crate) fn includes_point(&self, point: &Point<T, { DIM }>) -> bool {
+        // Every dimension/axis (x, y, z...) must include the point
+        for dim in 0..DIM {
+            if point[dim] < self.min_pt[dim] || point[dim] > self.max_pt[dim] {
+                return false;
+            }
+        }
+        true
     }
 }
 
