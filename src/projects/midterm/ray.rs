@@ -130,7 +130,7 @@ impl<T: Number> Ray<T, 3> {
         // This algorithm draws a 2D ray between a "known point" outside the 2D shape,
         // and checks the number of times the 2D ray intersects with the 2D shape.
         //
-        // If the ray intersects an even number of times,
+        // If the ray crosses an even number of times,
         // the point we are testing is inside the shape.
         // Otherwise, the point is outside the shape.
 
@@ -141,16 +141,48 @@ impl<T: Number> Ray<T, 3> {
                 + Point2::new(one::<T>(), one::<T>()).coords,
         );
 
-        let ray_to_point_outside: Ray<T, 2> =
-            Ray::new(face.points_relative()[0], point_outside_face);
+        let ray_to_point_outside: Ray<T, 2> = Ray::new(
+            Point2::new(
+                intersection_relative_coords.x,
+                intersection_relative_coords.y,
+            ),
+            point_outside_face,
+        );
 
-        let intersection = Point3::from(
+        let num_edge_crossings = face
+            .points_relative()
+            .windows(2)
+            // Chain one more vertex pair to make it wrap around to the first vertex again
+            .chain(std::iter::once(
+                [
+                    *face.points_relative().last().unwrap(),
+                    face.points_relative()[0],
+                ]
+                .as_slice(),
+            ))
+            .filter(|vertex_pair| {
+                let edge_ray: Ray<T, 2> = Ray::new(vertex_pair[0], vertex_pair[1]);
+                edge_ray.ray_intersection(&ray_to_point_outside).is_some()
+            })
+            .count();
+
+        println!("num crossings {}", num_edge_crossings);
+
+        // If the ray crosses an even number of times,
+        // the point we are testing is inside the shape.
+        // Otherwise, the point is outside the shape.
+        if num_edge_crossings % 2 == 1 {
+            // Odd number of crossings => outside
+            return None;
+        }
+
+        let face_intersection = Point3::from(
             face.x().scale(intersection_relative_coords.x)
                 + face.y().scale(intersection_relative_coords.y)
                 + face.normal().scale(intersection_relative_coords.z),
         );
 
-        Some(intersection)
+        Some(face_intersection)
     }
 }
 
@@ -213,10 +245,10 @@ mod tests {
             point!(1.0, 1.0, 0.0),
         ]);
 
-        // // The ray is outside the shape of the face (trickier since the bounding boxes do intersect)
-        // let ray = Ray::new(point!(0.0, 1.0, 1.0), point!(0.0, 1.0, -1.0));
-        // assert_eq!(ray.face_intersection(&face), None);
-        // assert_eq!(ray.invert().face_intersection(&face), None);
+        // The ray is outside the shape of the face (trickier since the bounding boxes do intersect)
+        let ray = Ray::new(point!(0.0, 1.0, 1.0), point!(0.0, 1.0, -1.0));
+        assert_eq!(ray.face_intersection(&face), None);
+        assert_eq!(ray.invert().face_intersection(&face), None);
     }
 
     #[test]
