@@ -30,6 +30,7 @@ pub struct GameState {
     camera_position: Point3<f64>,
     camera_direction: UnitVector3<f64>,
     camera_velocity: Vector3<f64>,
+    aspect_ratio: f64,
 }
 
 /// A little wrapper around the nalgebra matrix4 class, for JS use,
@@ -111,7 +112,7 @@ impl GameState {
         // (does not affect the positions of any vertices)
         // This just reduces the scope of z values to reduce clipping
         let transforms = Scale3::new(1.0, 1.0, 0.01).to_homogeneous()
-            * Matrix4::new_perspective(1.0, 30.0, 0.01, 100.0)
+            * Matrix4::new_perspective(self.aspect_ratio, 30.0, 0.01, 100.0)
             * Matrix4::look_at_rh(
                 &Point3::origin(),
                 &Point3::new(
@@ -128,12 +129,23 @@ impl GameState {
             ));
         TransformMatrix(transforms)
     }
+
+    #[wasm_bindgen(getter)]
+    pub fn aspect_ratio(&self) -> f64 {
+        self.aspect_ratio
+    }
+
+    #[wasm_bindgen(setter)]
+    pub fn set_aspect_ratio(&mut self, aspect_ratio: f64) {
+        self.aspect_ratio = aspect_ratio;
+    }
 }
 
 impl Default for GameState {
     #[inline]
     fn default() -> Self {
         Self {
+            aspect_ratio: 1.0,
             camera_position: point![0.0, 0.0, -2.0],
             camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, -1.0]),
             camera_velocity: Vector3::zeros(),
