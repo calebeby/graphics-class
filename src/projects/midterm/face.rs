@@ -2,6 +2,7 @@ use nalgebra::{Matrix3, Point2, Point3, Unit, UnitVector3, Vector3};
 
 use crate::{bounding_box::BoundingBox, Number};
 
+#[derive(Debug)]
 pub(crate) struct Face<T: Number> {
     points: Vec<Point3<T>>,
     bounding_box: BoundingBox<T, 3>,
@@ -46,6 +47,14 @@ impl<T: Number> Face<T> {
             points_relative,
             absolute_to_relative,
         }
+    }
+
+    /// Breaks a polygon into a bunch of triangle points (so they can be passed directly into webgl)
+    pub(crate) fn break_into_triangles(&self) -> Vec<Point3<T>> {
+        self.points[1..]
+            .windows(2)
+            .flat_map(|pair_of_points| vec![self.points[0], pair_of_points[0], pair_of_points[1]])
+            .collect()
     }
 
     #[inline]

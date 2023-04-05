@@ -14,11 +14,11 @@ impl<T: Number, const DIM: usize> Ray<T, { DIM }> {
         Self { start, end }
     }
     #[inline]
-    fn bounding_box(&self) -> BoundingBox<T, DIM> {
+    pub(crate) fn bounding_box(&self) -> BoundingBox<T, DIM> {
         BoundingBox::from_points(&[self.start, self.end])
     }
     #[inline]
-    fn invert(&self) -> Self {
+    pub(crate) fn invert(&self) -> Self {
         Self::new(self.end, self.start)
     }
 }

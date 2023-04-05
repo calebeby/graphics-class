@@ -7,8 +7,11 @@ mod ray;
 
 use std::f64::consts::PI;
 
+use face::Face;
 use nalgebra::{point, vector, Matrix4, Point3, Scale3, Translation3, UnitVector3, Vector3};
 use wasm_bindgen::prelude::*;
+
+use crate::ray::Ray;
 
 pub(crate) trait Number:
     'static
@@ -101,7 +104,20 @@ impl GameState {
             vector![angle_x.sin(), 0.0, -angle_x.cos()]
                 + vector![0.0, -angle_y.sin(), -angle_y.cos()],
         );
-        self.camera_position += self.camera_velocity * dt;
+        let new_camera_position = self.camera_position + self.camera_velocity * dt;
+        // TODO: why is it negative?
+        let camera_movement_ray = Ray::new(-new_camera_position, -self.camera_position);
+        let maze = make_maze();
+        let has_intersection = maze.iter().any(|face| {
+            let intersection = camera_movement_ray.face_intersection(&face);
+            if let Some(intersection) = intersection {
+                console_log!("intersect {:?}", intersection);
+            }
+            intersection.is_some()
+        });
+        if !has_intersection {
+            self.camera_position = new_camera_position;
+        }
         let accel = 15.0;
         let decel = 0.15;
         let forwards = self.camera_direction.into_inner();
@@ -162,16 +178,7 @@ impl Default for GameState {
     }
 }
 
-/// Breaks a polygon into a bunch of triangle points (so they can be psased directly into webgl)
-fn break_into_triangles<'pts, Point>(face_points: &[&'pts Point]) -> Vec<&'pts Point> {
-    face_points[1..]
-        .windows(2)
-        .flat_map(|pair_of_points| vec![face_points[0], pair_of_points[0], pair_of_points[1]])
-        .collect()
-}
-
-#[wasm_bindgen]
-pub fn generate_maze_points() -> Vec<f32> {
+fn make_maze() -> Vec<Face<f64>> {
     let front_right_bottom = Point3::new(0.0, 0.0, 1.0);
     let front_left_bottom = Point3::new(-1.0, 0.0, 1.0);
     let front_right_top = Point3::new(0.0, 1.0, 1.0);
@@ -182,52 +189,57 @@ pub fn generate_maze_points() -> Vec<f32> {
     let back_right_top = Point3::new(0.0, 1.0, 0.0);
     let back_left_top = Point3::new(-1.0, 1.0, 0.0);
 
-    let faces = [
-        [
-            &front_right_top,
-            &front_right_bottom,
-            &front_left_bottom,
-            &front_left_top,
-        ],
-        [
-            &front_right_top,
-            &back_right_top,
-            &back_right_bottom,
-            &front_right_bottom,
-        ],
-        [
-            &front_left_top,
-            &back_left_top,
-            &back_left_bottom,
-            &front_left_bottom,
-        ],
-        [
-            &front_right_top,
-            &back_right_top,
-            &back_left_top,
-            &front_left_top,
-        ],
-        [
-            &front_right_bottom,
-            &back_right_bottom,
-            &back_left_bottom,
-            &front_left_bottom,
-        ],
-        [
-            &back_right_top,
-            &back_right_bottom,
-            &back_left_bottom,
-            &back_left_top,
-        ],
-    ];
+    vec![
+        Face::new(vec![
+            front_right_top,
+            front_right_bottom,
+            front_left_bottom,
+            front_left_top,
+        ]),
+        Face::new(vec![
+            front_right_top,
+            back_right_top,
+            back_right_bottom,
+            front_right_bottom,
+        ]),
+        Face::new(vec![
+            front_left_top,
+            back_left_top,
+            back_left_bottom,
+            front_left_bottom,
+        ]),
+        Face::new(vec![
+            front_right_top,
+            back_right_top,
+            back_left_top,
+            front_left_top,
+        ]),
+        Face::new(vec![
+            front_right_bottom,
+            back_right_bottom,
+            back_left_bottom,
+            front_left_bottom,
+        ]),
+        Face::new(vec![
+            back_right_top,
+            back_right_bottom,
+            back_left_bottom,
+            back_left_top,
+        ]),
+    ]
+}
+
+#[wasm_bindgen]
+pub fn generate_maze_points() -> Vec<f32> {
+    let faces = make_maze();
 
     let points: Vec<_> = faces
         .iter()
-        .flat_map(|face| break_into_triangles(face))
+        .flat_map(|face| face.break_into_triangles())
         .collect();
 
     points
         .iter()
-        .flat_map(|point| [point.x, point.y, point.z, 1.0])
+        .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
         .collect()
 }
