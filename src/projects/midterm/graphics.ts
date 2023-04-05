@@ -37,16 +37,8 @@ export const init_canvas = (
   const resize_listener: ResizeObserverCallback = () => {
     canvas.width = canvas.clientWidth * window.devicePixelRatio;
     canvas.height = canvas.clientHeight * window.devicePixelRatio;
-    const min_dimension = Math.min(canvas.width, canvas.height);
-    // Force the axes to be square (matching x and y scale in terms of pixels,
-    // even if the canvas "rendering box" is rectangular)
-    gl.viewport(
-      // Force 0, 0 to be in the middle by shifting the axes based on which dimension is larger
-      (canvas.width - min_dimension) / 2,
-      (canvas.height - min_dimension) / 2,
-      min_dimension,
-      min_dimension,
-    );
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    game_state.rust_state.aspect_ratio = canvas.width / canvas.height;
     cancelAnimationFrame(frame_req);
     render();
   };
