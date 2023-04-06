@@ -14,9 +14,10 @@ export interface GameObject {
 export interface GameState {
   rust_state: rust.GameState;
   objects: GameObject[];
+  is_active: boolean;
   input_state: {
-    cursor_x: number;
-    cursor_y: number;
+    cursor_movement_x: number;
+    cursor_movement_y: number;
     input_w: boolean;
     input_a: boolean;
     input_s: boolean;
@@ -44,9 +45,10 @@ export const Midterm = ({}: Props) => {
             vertex_coords: rust.generate_maze_points(),
           },
         ],
+        is_active: false,
         input_state: {
-          cursor_x: 0.0,
-          cursor_y: 0.0,
+          cursor_movement_x: 0.0,
+          cursor_movement_y: 0.0,
           input_w: false,
           input_a: false,
           input_s: false,

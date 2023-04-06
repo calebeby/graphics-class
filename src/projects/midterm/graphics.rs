@@ -8,7 +8,9 @@ mod ray;
 use std::f64::consts::PI;
 
 use face::Face;
-use nalgebra::{point, vector, Matrix4, Point3, Scale3, Translation3, UnitVector3, Vector3};
+use nalgebra::{
+    point, vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
+};
 use wasm_bindgen::prelude::*;
 
 use crate::ray::Ray;
@@ -92,28 +94,32 @@ impl GameState {
         input_a: bool,
         input_s: bool,
         input_d: bool,
-        cursor_x: f64,
-        cursor_y: f64,
+        cursor_movement_x: f64,
+        cursor_movement_y: f64,
         delta_time_ms: usize,
     ) {
         // In seconds, time since last render
         let dt = delta_time_ms as f64 / 1000.0;
-        // Ranges from -pi to +pi
-        let angle_x = cursor_x * PI;
-        let angle_y = cursor_y * PI;
+        let rotation_scale = 0.01;
+        let rotation_x = rotation_scale * cursor_movement_x;
+        let rotation_y = rotation_scale * cursor_movement_y;
+        let forwards = self.camera_direction.into_inner();
+        let right = forwards.cross(&UP);
         self.camera_direction = UnitVector3::new_normalize(
-            vector![angle_x.sin(), 0.0, -angle_x.cos()]
-                + vector![0.0, -angle_y.sin(), -angle_y.cos()],
+            UnitQuaternion::new(UP * rotation_x + right * rotation_y)
+                .transform_vector(&self.camera_direction),
         );
         let new_camera_position = self.camera_position + self.camera_velocity * dt;
-        // TODO: why is it negative?
-        let camera_movement_ray = Ray::new(-new_camera_position, -self.camera_position);
+        let camera_movement_ray = Ray::new(-self.camera_position, -new_camera_position);
+        let camera_movement_direction = UnitVector3::new_normalize(camera_movement_ray.to_vector());
+        let camera_movement_ray_extended = Ray::new(
+            -self.camera_position,
+            // TODO:
+            -new_camera_position + camera_movement_direction.scale(1.1),
+        );
         let maze = make_maze();
         let has_intersection = maze.iter().any(|face| {
-            let intersection = camera_movement_ray.face_intersection(&face);
-            if let Some(intersection) = intersection {
-                console_log!("intersect {:?}", intersection);
-            }
+            let intersection = camera_movement_ray_extended.face_intersection(face);
             intersection.is_some()
         });
         if !has_intersection {
@@ -122,6 +128,7 @@ impl GameState {
         let accel = 15.0;
         let decel = 0.15;
         let forwards = self.camera_direction.into_inner();
+        let right = forwards.cross(&UP);
         if input_w {
             self.camera_velocity -= accel * dt * forwards;
         } else if input_s {
@@ -129,7 +136,6 @@ impl GameState {
         } else {
             self.camera_velocity -= decel * (self.camera_velocity.dot(&forwards)) * forwards;
         }
-        let right = forwards.cross(&UP);
         if input_a {
             self.camera_velocity -= accel * dt * right;
         } else if input_d {

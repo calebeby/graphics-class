@@ -76,6 +76,11 @@ body {
   display: block;
   width: 100%;
   border-radius: 5px;
+  transition: filter 0.3s ease;
+}
+
+.transform-demo canvas:not(.active) {
+  filter: saturate(0);
 }
 
 *,

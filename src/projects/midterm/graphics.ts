@@ -1,7 +1,6 @@
 import vsSource from "./vertex-shader.glsl?raw";
 import fsSource from "./fragment-shader.glsl?raw";
 import type { GameState } from "./app";
-import * as rust from "./pkg";
 
 export const init_canvas = (
   canvas: HTMLCanvasElement,
@@ -39,7 +38,6 @@ export const init_canvas = (
     canvas.height = canvas.clientHeight * window.devicePixelRatio;
     gl.viewport(0, 0, canvas.width, canvas.height);
     game_state.rust_state.aspect_ratio = canvas.width / canvas.height;
-    cancelAnimationFrame(frame_req);
     render();
   };
   const resize_observer = new ResizeObserver(resize_listener);
@@ -56,32 +54,74 @@ export const init_canvas = (
       game_state.input_state.input_d = is_down;
     }
   };
-  const mouse_listener = (event: MouseEvent) => {
-    // Normalize the mouse position into x and y coordinates between -1 and 1
-    game_state.input_state.cursor_x =
-      (2 * event.offsetX) / canvas.offsetWidth - 1;
-    game_state.input_state.cursor_y =
-      (2 * event.offsetY) / canvas.offsetHeight - 1;
+  const mousemove_listener = (event: MouseEvent) => {
+    game_state.input_state.cursor_movement_x = event.movementX;
+    game_state.input_state.cursor_movement_y = event.movementY;
   };
   const key_down_listener = key_listener(true);
   const key_up_listener = key_listener(false);
+  const click_listener = () => {
+    game_state.is_active = true;
+    canvas.requestPointerLock();
+  };
+  const dblclick_listener = () => {
+    canvas.requestFullscreen().then(() => {
+      canvas.requestPointerLock();
+    });
+  };
+  const pointerlockchange_listener = () => {
+    const is_active = document.pointerLockElement === canvas;
+    game_state.is_active = is_active;
+    if (is_active) {
+      canvas.classList.add("active");
+      render();
+    } else {
+      canvas.classList.remove("active");
+    }
+  };
+
+  const visibilitychange_listener = () => {
+    if (
+      document.visibilityState === "visible" &&
+      document.activeElement !== null
+    ) {
+      console.log("became visible");
+      canvas.requestPointerLock();
+    } else {
+      console.log("became hidden");
+    }
+  };
+
+  // TODO: dblclick for fullscreen
+  // TODO: automatically request pointer lock to play, re-request when switch to page
   window.addEventListener("keydown", key_down_listener);
   window.addEventListener("keyup", key_up_listener);
-  canvas.addEventListener("mousemove", mouse_listener);
+  canvas.addEventListener("mousemove", mousemove_listener);
+  canvas.addEventListener("click", click_listener);
+  canvas.addEventListener("dblclick", dblclick_listener);
+  window.addEventListener("pointerlockchange", pointerlockchange_listener);
+  window.addEventListener("visibilitychange", visibilitychange_listener);
+  window.addEventListener("focus", visibilitychange_listener);
+  window.addEventListener("blur", visibilitychange_listener);
 
   let last_render_time = new Date().getTime();
 
   const render = () => {
+    cancelAnimationFrame(frame_req);
     const now = new Date().getTime();
     game_state.rust_state.update(
       game_state.input_state.input_w,
       game_state.input_state.input_a,
       game_state.input_state.input_s,
       game_state.input_state.input_d,
-      game_state.input_state.cursor_x,
-      game_state.input_state.cursor_y,
+      game_state.input_state.cursor_movement_x,
+      game_state.input_state.cursor_movement_y,
       now - last_render_time,
     );
+    // Reset the cursor movement so if the mouse mousemove handler doesn't fire before the next render,
+    // the previous movement values aren't reused.
+    game_state.input_state.cursor_movement_x = 0;
+    game_state.input_state.cursor_movement_y = 0;
     last_render_time = now;
     gl.useProgram(rendering_program);
     gl.clearBufferfv(gl.COLOR, 0, [0, 0.5, 1, 1]);
@@ -111,7 +151,9 @@ export const init_canvas = (
       // Reset Attribute Array
       gl.disableVertexAttribArray(attrib_id_obj_vertex);
     }
-    frame_req = requestAnimationFrame(render);
+    if (game_state.is_active) {
+      frame_req = requestAnimationFrame(render);
+    }
   };
 
   let frame_req = requestAnimationFrame(render);
@@ -125,7 +167,16 @@ export const init_canvas = (
       resize_observer.unobserve(canvas);
       window.removeEventListener("keydown", key_down_listener);
       window.removeEventListener("keyup", key_up_listener);
-      canvas.removeEventListener("mousemove", mouse_listener);
+      canvas.removeEventListener("mousemove", mousemove_listener);
+      canvas.removeEventListener("click", click_listener);
+      canvas.removeEventListener("dblclick", dblclick_listener);
+      window.removeEventListener(
+        "pointerlockchange",
+        pointerlockchange_listener,
+      );
+      window.removeEventListener("visibilitychange", visibilitychange_listener);
+      window.removeEventListener("focus", visibilitychange_listener);
+      window.removeEventListener("blur", visibilitychange_listener);
     },
   };
 };

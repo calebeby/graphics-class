@@ -1,4 +1,4 @@
-use nalgebra::{one, Point, Point2, Point3};
+use nalgebra::{one, OVector, Point, Point2, Point3};
 
 use crate::{bounding_box::BoundingBox, face::Face, Number};
 
@@ -20,6 +20,10 @@ impl<T: Number, const DIM: usize> Ray<T, { DIM }> {
     #[inline]
     pub(crate) fn invert(&self) -> Self {
         Self::new(self.end, self.start)
+    }
+    #[inline]
+    pub(crate) fn to_vector(&self) -> OVector<T, nalgebra::Const<DIM>> {
+        self.end - self.start
     }
 }
 
