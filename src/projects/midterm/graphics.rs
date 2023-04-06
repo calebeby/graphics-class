@@ -151,26 +151,46 @@ impl GameState {
     }
 
     pub fn world_to_camera(&self) -> TransformMatrix {
-        // Scale everything in the z direction down
-        // (does not affect the positions of any vertices)
-        // This just reduces the scope of z values to reduce clipping
-        let transforms = Scale3::new(1.0, 1.0, 0.01).to_homogeneous()
-            * Matrix4::new_perspective(self.aspect_ratio, 30.0, 0.01, 100.0)
-            * Matrix4::look_at_rh(
-                &Point3::origin(),
-                &Point3::new(
-                    self.camera_direction.x,
-                    self.camera_direction.y,
-                    self.camera_direction.z,
+        TransformMatrix(
+            // Scale everything in the z direction down
+            // (does not affect the positions of any vertices)
+            // This just reduces the scope of z values to reduce clipping
+            Scale3::new(1.0, 1.0, 0.01).to_homogeneous()
+                * Matrix4::new_perspective(self.aspect_ratio, 30.0, 0.01, 100.0)
+                * Matrix4::look_at_rh(
+                    &Point3::origin(),
+                    &Point3::new(
+                        self.camera_direction.x,
+                        self.camera_direction.y,
+                        self.camera_direction.z,
+                    ),
+                    &UP,
+                )
+                * Matrix4::new_translation(&Vector3::new(
+                    self.camera_position.x,
+                    self.camera_position.y,
+                    self.camera_position.z,
+                )),
+        )
+    }
+
+    pub fn world_to_camera_without_camera_translation(&self) -> TransformMatrix {
+        TransformMatrix(
+            // Scale everything in the z direction down
+            // (does not affect the positions of any vertices)
+            // This just reduces the scope of z values to reduce clipping
+            Scale3::new(1.0, 1.0, 0.01).to_homogeneous()
+                * Matrix4::new_perspective(self.aspect_ratio, 30.0, 0.01, 100.0)
+                * Matrix4::look_at_rh(
+                    &Point3::origin(),
+                    &Point3::new(
+                        self.camera_direction.x,
+                        self.camera_direction.y,
+                        self.camera_direction.z,
+                    ),
+                    &UP,
                 ),
-                &UP,
-            )
-            * Matrix4::new_translation(&Vector3::new(
-                self.camera_position.x,
-                self.camera_position.y,
-                self.camera_position.z,
-            ));
-        TransformMatrix(transforms)
+        )
     }
 
     #[wasm_bindgen(getter)]
@@ -197,15 +217,16 @@ impl Default for GameState {
 }
 
 fn make_maze() -> Vec<Face<f64>> {
-    let front_right_bottom = Point3::new(0.0, 0.0, 1.0);
-    let front_left_bottom = Point3::new(-1.0, 0.0, 1.0);
-    let front_right_top = Point3::new(0.0, 1.0, 1.0);
-    let front_left_top = Point3::new(-1.0, 1.0, 1.0);
+    let scale = 1.0;
+    let front_right_bottom = Point3::new(0.5, -0.5, 0.5) * scale;
+    let front_left_bottom = Point3::new(-0.5, -0.5, 0.5) * scale;
+    let front_right_top = Point3::new(0.5, 0.5, 0.5) * scale;
+    let front_left_top = Point3::new(-0.5, 0.5, 0.5) * scale;
 
-    let back_right_bottom = Point3::new(0.0, 0.0, 0.0);
-    let back_left_bottom = Point3::new(-1.0, 0.0, 0.0);
-    let back_right_top = Point3::new(0.0, 1.0, 0.0);
-    let back_left_top = Point3::new(-1.0, 1.0, 0.0);
+    let back_right_bottom = Point3::new(0.5, -0.5, -0.5) * scale;
+    let back_left_bottom = Point3::new(-0.5, -0.5, -0.5) * scale;
+    let back_right_top = Point3::new(0.5, 0.5, -0.5) * scale;
+    let back_left_top = Point3::new(-0.5, 0.5, -0.5) * scale;
 
     vec![
         Face::new(vec![
@@ -250,6 +271,71 @@ fn make_maze() -> Vec<Face<f64>> {
 #[wasm_bindgen]
 pub fn generate_maze_points() -> Vec<f32> {
     let faces = make_maze();
+
+    let points: Vec<_> = faces
+        .iter()
+        .flat_map(|face| face.break_into_triangles())
+        .collect();
+
+    points
+        .iter()
+        .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
+        .collect()
+}
+
+#[wasm_bindgen]
+pub fn generate_skybox_points() -> Vec<f32> {
+    let faces = {
+        let scale = 100.0;
+        let front_right_bottom = Point3::new(0.5, -0.5, 0.5) * scale;
+        let front_left_bottom = Point3::new(-0.5, -0.5, 0.5) * scale;
+        let front_right_top = Point3::new(0.5, 0.5, 0.5) * scale;
+        let front_left_top = Point3::new(-0.5, 0.5, 0.5) * scale;
+
+        let back_right_bottom = Point3::new(0.5, -0.5, -0.5) * scale;
+        let back_left_bottom = Point3::new(-0.5, -0.5, -0.5) * scale;
+        let back_right_top = Point3::new(0.5, 0.5, -0.5) * scale;
+        let back_left_top = Point3::new(-0.5, 0.5, -0.5) * scale;
+
+        vec![
+            Face::new(vec![
+                front_right_top,
+                front_right_bottom,
+                front_left_bottom,
+                front_left_top,
+            ]),
+            Face::new(vec![
+                front_right_top,
+                back_right_top,
+                back_right_bottom,
+                front_right_bottom,
+            ]),
+            Face::new(vec![
+                front_left_top,
+                back_left_top,
+                back_left_bottom,
+                front_left_bottom,
+            ]),
+            Face::new(vec![
+                front_right_top,
+                back_right_top,
+                back_left_top,
+                front_left_top,
+            ]),
+            Face::new(vec![
+                front_right_bottom,
+                back_right_bottom,
+                back_left_bottom,
+                front_left_bottom,
+            ]),
+            Face::new(vec![
+                back_right_top,
+                back_right_bottom,
+                back_left_bottom,
+                back_left_top,
+            ]),
+        ]
+    };
 
     let points: Vec<_> = faces
         .iter()

@@ -10,9 +10,7 @@ layout(location = 0) in vec4 obj_vertex;
 layout(location = 1) in vec4 obj_normal;
 
 void main(void) {
-  vec4 base = transform * obj_vertex;
-
-  gl_Position = base;
+  gl_Position = transform * obj_vertex;
 
   float origin_dist = 1.0 * abs(obj_vertex[2]);
   vs_color = vec4(origin_dist, origin_dist, origin_dist, 1);

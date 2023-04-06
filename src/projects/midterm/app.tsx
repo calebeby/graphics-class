@@ -23,6 +23,7 @@ export interface GameState {
     input_s: boolean;
     input_d: boolean;
   };
+  skybox_vert_buffer?: WebGLBuffer | null;
 }
 
 interface Props {}

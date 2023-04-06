@@ -80,7 +80,8 @@ body {
 }
 
 .transform-demo canvas:not(.active) {
-  filter: saturate(0);
+  filter: saturate(0) brightness(0.5);
+  cursor: pointer;
 }
 
 *,
