@@ -85,10 +85,7 @@ export const init_canvas = (
       document.visibilityState === "visible" &&
       document.activeElement !== null
     ) {
-      console.log("became visible");
       canvas.requestPointerLock();
-    } else {
-      console.log("became hidden");
     }
   };
 
