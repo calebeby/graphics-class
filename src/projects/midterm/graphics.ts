@@ -89,8 +89,6 @@ export const init_canvas = (
     }
   };
 
-  // TODO: dblclick for fullscreen
-  // TODO: automatically request pointer lock to play, re-request when switch to page
   window.addEventListener("keydown", key_down_listener);
   window.addEventListener("keyup", key_up_listener);
   canvas.addEventListener("mousemove", mousemove_listener);
