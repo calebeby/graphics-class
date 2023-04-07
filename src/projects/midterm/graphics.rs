@@ -3,11 +3,11 @@ pub(crate) extern crate num_traits;
 pub(crate) extern crate wasm_bindgen;
 mod bounding_box;
 mod face;
+mod load_obj;
 mod ray;
 
-use std::f64::consts::PI;
-
 use face::Face;
+use load_obj::load_obj;
 use nalgebra::{
     point, vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
 };
@@ -52,11 +52,53 @@ macro_rules! console_log {
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
+pub struct Maze {
+    faces: Vec<Face<f64>>,
+}
+
+#[wasm_bindgen]
+impl Maze {
+    #[wasm_bindgen]
+    pub fn points_to_float32array(&self) -> Vec<f32> {
+        let points: Vec<_> = self
+            .faces
+            .iter()
+            .flat_map(|face| face.break_into_triangles())
+            .collect();
+
+        points
+            .iter()
+            .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
+            .collect()
+    }
+
+    #[wasm_bindgen]
+    pub fn normals_to_float32array(&self) -> Vec<f32> {
+        let normals: Vec<&UnitVector3<f64>> = self
+            .faces
+            .iter()
+            .flat_map(|face| {
+                face.break_into_triangles()
+                    .into_iter()
+                    .map(move |_triangle| face.normal())
+            })
+            .collect();
+
+        normals
+            .iter()
+            .flat_map(|point| [point.x as _, point.y as _, point.z as _, 0.0])
+            .collect()
+    }
+}
+
+#[wasm_bindgen]
 pub struct GameState {
     camera_position: Point3<f64>,
     camera_direction: UnitVector3<f64>,
     camera_velocity: Vector3<f64>,
     aspect_ratio: f64,
+    maze: Maze,
 }
 
 /// A little wrapper around the nalgebra matrix4 class, for JS use,
@@ -117,11 +159,11 @@ impl GameState {
             // TODO:
             -new_camera_position + camera_movement_direction.scale(1.1),
         );
-        let maze = make_maze();
-        let has_intersection = maze.iter().any(|face| {
+        let has_intersection = self.maze.faces.iter().any(|face| {
             let intersection = camera_movement_ray_extended.face_intersection(face);
             intersection.is_some()
         });
+        // let has_intersection = false;
         if !has_intersection {
             self.camera_position = new_camera_position;
         }
@@ -187,6 +229,11 @@ impl GameState {
     pub fn set_aspect_ratio(&mut self, aspect_ratio: f64) {
         self.aspect_ratio = aspect_ratio;
     }
+
+    #[wasm_bindgen(getter)]
+    pub fn maze(&self) -> Maze {
+        self.maze.clone()
+    }
 }
 
 impl Default for GameState {
@@ -197,6 +244,9 @@ impl Default for GameState {
             camera_position: point![0.0, 0.0, -2.0],
             camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, -1.0]),
             camera_velocity: Vector3::zeros(),
+            maze: Maze {
+                faces: load_obj(include_str!("cat.obj")),
+            },
         }
     }
 }
@@ -228,15 +278,15 @@ fn make_maze() -> Vec<Face<f64>> {
         ]),
         Face::new(vec![
             front_left_top,
-            back_left_top,
-            back_left_bottom,
             front_left_bottom,
+            back_left_bottom,
+            back_left_top,
         ]),
         Face::new(vec![
             front_right_top,
-            back_right_top,
-            back_left_top,
             front_left_top,
+            back_left_top,
+            back_right_top,
         ]),
         Face::new(vec![
             front_right_bottom,
@@ -246,26 +296,11 @@ fn make_maze() -> Vec<Face<f64>> {
         ]),
         Face::new(vec![
             back_right_top,
-            back_right_bottom,
-            back_left_bottom,
             back_left_top,
+            back_left_bottom,
+            back_right_bottom,
         ]),
     ]
-}
-
-#[wasm_bindgen]
-pub fn generate_maze_points() -> Vec<f32> {
-    let faces = make_maze();
-
-    let points: Vec<_> = faces
-        .iter()
-        .flat_map(|face| face.break_into_triangles())
-        .collect();
-
-    points
-        .iter()
-        .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
-        .collect()
 }
 
 #[wasm_bindgen]
@@ -297,15 +332,15 @@ pub fn generate_skybox_points() -> Vec<f32> {
             ]),
             Face::new(vec![
                 front_left_top,
-                back_left_top,
-                back_left_bottom,
                 front_left_bottom,
+                back_left_bottom,
+                back_left_top,
             ]),
             Face::new(vec![
                 front_right_top,
-                back_right_top,
-                back_left_top,
                 front_left_top,
+                back_left_top,
+                back_right_top,
             ]),
             Face::new(vec![
                 front_right_bottom,
@@ -315,9 +350,9 @@ pub fn generate_skybox_points() -> Vec<f32> {
             ]),
             Face::new(vec![
                 back_right_top,
-                back_right_bottom,
-                back_left_bottom,
                 back_left_top,
+                back_left_bottom,
+                back_right_bottom,
             ]),
         ]
     };

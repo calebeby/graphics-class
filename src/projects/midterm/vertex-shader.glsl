@@ -12,6 +12,12 @@ layout(location = 1) in vec4 obj_normal;
 void main(void) {
   gl_Position = transform * obj_vertex;
 
-  float origin_dist = 2.0 * obj_vertex[2];
-  vs_color = vec4(origin_dist, origin_dist, origin_dist, 1);
+  vec4 obj_normal2 = normalize(obj_normal);
+  float shade_1 =
+      clamp(dot(obj_normal2, normalize(vec4(-0.5, -0.5, -0.5, 0.0))), 0.0, 1.0);
+  float shade_2 = clamp(dot(obj_normal2, vec4(0.0, -1.0, 0.0, 0.0)), 0.0, 1.0);
+  float shade_3 = clamp(dot(obj_normal2, vec4(0.0, 1.0, 0.0, 0.0)), 0.0, 1.0);
+  vs_color = vec4(0.7, 0.6, 0.5, 1) * shade_1 +
+             vec4(0.4, 0.4, 0.4, 1) * shade_2 +
+             vec4(0.1, 0.1, 0.2, 1) * shade_3 + vec4(0.0, 0.0, 0.0, 1.0);
 }

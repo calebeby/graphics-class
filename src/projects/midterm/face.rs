@@ -2,7 +2,7 @@ use nalgebra::{Matrix3, Point2, Point3, Unit, UnitVector3, Vector3};
 
 use crate::{bounding_box::BoundingBox, Number};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Face<T: Number> {
     points: Vec<Point3<T>>,
     bounding_box: BoundingBox<T, 3>,

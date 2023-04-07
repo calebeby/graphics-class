@@ -1,7 +1,7 @@
 use crate::Number;
 use nalgebra::Point;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct BoundingBox<T: Number, const DIM: usize> {
     pub(crate) min_pt: Point<T, { DIM }>,
     pub(crate) max_pt: Point<T, { DIM }>,

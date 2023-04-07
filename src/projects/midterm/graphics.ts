@@ -76,19 +76,24 @@ export const init_canvas = (
 
   // Hardcoded to match the layout locations declared in the vertex shader
   const attrib_id_obj_vertex = 0;
+  const attrib_id_obj_normals = 1;
 
   game_state.skybox_vert_buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, game_state.skybox_vert_buffer);
   const skybox_points = rust.generate_skybox_points();
-  gl.bufferData(gl.ARRAY_BUFFER, skybox_points, gl.STATIC_DRAW); // We only need to set this once (right now)
+  gl.bufferData(gl.ARRAY_BUFFER, skybox_points, gl.STATIC_DRAW);
+
   for (const object of game_state.objects) {
     object.obj_vert_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_vert_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, object.vertex_coords, gl.STATIC_DRAW); // We only need to set this once (right now)
-  }
-  gl.enableVertexAttribArray(attrib_id_obj_vertex);
+    gl.bufferData(gl.ARRAY_BUFFER, object.vertex_coords, gl.STATIC_DRAW);
 
-  //Depth Test Enable (only render things 'forward' of other things)
+    object.obj_normals_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_normals_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, object.vertex_normals, gl.STATIC_DRAW);
+  }
+
+  // Depth Test Enable (only render things 'forward' of other things)
   gl.enable(gl.DEPTH_TEST);
   // Passes if the fragment's depth values is less than stored value
   gl.depthFunc(gl.LEQUAL);
@@ -210,10 +215,22 @@ export const init_canvas = (
 
     for (const object of game_state.objects) {
       if (!object.obj_vert_buffer) throw new Error("missing obj_vert_buffer");
+      if (!object.obj_normals_buffer)
+        throw new Error("missing obj_normals_buffer");
       gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_vert_buffer);
       gl.enableVertexAttribArray(attrib_id_obj_vertex);
       gl.vertexAttribPointer(
         attrib_id_obj_vertex, // Attribute in question
+        4, // Number of elements (vec4)
+        gl.FLOAT, // Type of element
+        false, // Normalize? Nope
+        0, // No stride (steps between indexes)
+        0, // initial offset
+      );
+      gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_normals_buffer);
+      gl.enableVertexAttribArray(attrib_id_obj_normals);
+      gl.vertexAttribPointer(
+        attrib_id_obj_normals, // Attribute in question
         4, // Number of elements (vec4)
         gl.FLOAT, // Type of element
         false, // Normalize? Nope

@@ -24,7 +24,6 @@ export const init_canvas = (
     gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_vert_buffer);
     gl.bufferData(gl.ARRAY_BUFFER, object.vertex_coords, gl.STATIC_DRAW); // We only need to set this once (right now)
 
-    gl.enableVertexAttribArray(attrib_id_obj_vertex);
     gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_vert_buffer);
   }
 

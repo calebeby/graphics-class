@@ -8,7 +8,9 @@ import "./pkg/midterm_bg.wasm?url";
 export interface GameObject {
   transform_matrix: rust.TransformMatrix;
   vertex_coords: Float32Array;
+  vertex_normals: Float32Array;
   obj_vert_buffer?: WebGLBuffer | null;
+  obj_normals_buffer?: WebGLBuffer | null;
 }
 
 export interface GameState {
@@ -38,12 +40,14 @@ export const Midterm = ({}: Props) => {
 
   useEffect(() => {
     rust.default().then(() => {
+      const rust_state = new rust.GameState();
       set_game_state({
-        rust_state: new rust.GameState(),
+        rust_state,
         objects: [
           {
             transform_matrix: new rust.TransformMatrix(0, 0, 0),
-            vertex_coords: rust.generate_maze_points(),
+            vertex_coords: rust_state.maze.points_to_float32array(),
+            vertex_normals: rust_state.maze.normals_to_float32array(),
           },
         ],
         is_active: false,
