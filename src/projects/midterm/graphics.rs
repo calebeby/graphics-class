@@ -151,27 +151,12 @@ impl GameState {
     }
 
     pub fn world_to_camera(&self) -> TransformMatrix {
-        TransformMatrix(
-            // Scale everything in the z direction down
-            // (does not affect the positions of any vertices)
-            // This just reduces the scope of z values to reduce clipping
-            Scale3::new(1.0, 1.0, 0.01).to_homogeneous()
-                * Matrix4::new_perspective(self.aspect_ratio, 30.0, 0.01, 100.0)
-                * Matrix4::look_at_rh(
-                    &Point3::origin(),
-                    &Point3::new(
-                        self.camera_direction.x,
-                        self.camera_direction.y,
-                        self.camera_direction.z,
-                    ),
-                    &UP,
-                )
-                * Matrix4::new_translation(&Vector3::new(
-                    self.camera_position.x,
-                    self.camera_position.y,
-                    self.camera_position.z,
-                )),
-        )
+        self.world_to_camera_without_camera_translation()
+            .times(&TransformMatrix(Matrix4::new_translation(&Vector3::new(
+                self.camera_position.x,
+                self.camera_position.y,
+                self.camera_position.z,
+            ))))
     }
 
     pub fn world_to_camera_without_camera_translation(&self) -> TransformMatrix {
