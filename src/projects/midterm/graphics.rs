@@ -6,6 +6,8 @@ mod face;
 mod load_obj;
 mod ray;
 
+use std::collections::HashMap;
+
 use face::Face;
 use load_obj::load_obj;
 use nalgebra::{
@@ -57,38 +59,72 @@ pub struct Maze {
     faces: Vec<Face<f64>>,
 }
 
+fn points_to_float32array(points: &[Vector3<f64>]) -> Vec<f32> {
+    points
+        .iter()
+        .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
+        .collect()
+}
+
 #[wasm_bindgen]
 impl Maze {
     #[wasm_bindgen]
     pub fn points_to_float32array(&self) -> Vec<f32> {
-        let points: Vec<_> = self
-            .faces
-            .iter()
-            .flat_map(|face| face.break_into_triangles())
-            .collect();
-
-        points
-            .iter()
-            .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
-            .collect()
+        points_to_float32array(
+            &self
+                .faces
+                .iter()
+                .flat_map(|face| {
+                    face.break_into_triangles()
+                        .iter()
+                        .map(|p| p.coords)
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        )
     }
 
     #[wasm_bindgen]
     pub fn normals_to_float32array(&self) -> Vec<f32> {
-        let normals: Vec<&UnitVector3<f64>> = self
-            .faces
-            .iter()
-            .flat_map(|face| {
-                face.break_into_triangles()
-                    .into_iter()
-                    .map(move |_triangle| face.normal())
-            })
-            .collect();
+        points_to_float32array(
+            &self
+                .faces
+                .iter()
+                .flat_map(|face| {
+                    face.break_into_triangles()
+                        .into_iter()
+                        .map(move |_triangle| face.normal().into_inner())
+                })
+                .collect::<Vec<_>>(),
+        )
+    }
 
-        normals
-            .iter()
-            .flat_map(|point| [point.x as _, point.y as _, point.z as _, 0.0])
-            .collect()
+    #[wasm_bindgen]
+    pub fn smooth_normals_to_float32array(&self) -> Vec<f32> {
+        // Map from point ids to the corresponding "net normal" vector
+        let mut smooth_normals: HashMap<usize, Vector3<_>> = HashMap::new();
+        for face in &self.faces {
+            for &point_id in face.point_ids().unwrap() {
+                let normals = smooth_normals.entry(point_id).or_default();
+                *normals += face.normal().into_inner();
+            }
+        }
+        points_to_float32array(
+            &self
+                .faces
+                .iter()
+                .flat_map(|face| {
+                    face.break_into_triangles_with_ids()
+                        .into_iter()
+                        .map(|point_id| {
+                            smooth_normals
+                                .get(&point_id)
+                                .unwrap_or(&Vector3::zeros())
+                                .normalize()
+                        })
+                })
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
