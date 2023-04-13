@@ -1,0 +1,91 @@
+body {
+  margin: 0;
+}
+
+.transform-demo {
+  width: 100%;
+  padding: 1em;
+  border: 2px solid #0000001a;
+  border-radius: 10px;
+  display: grid;
+  gap: 1.5em;
+}
+
+.transform-demo > * {
+  margin: 0;
+}
+
+.transform-demo > ol {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: inherit;
+}
+
+.transform-demo > ol > li {
+  list-style-type: none;
+  display: grid;
+  gap: 0.5em;
+  border: 2px solid #0000001a;
+  border-radius: 10px;
+  padding: 1em;
+}
+
+.transform-demo .transform-control {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 1em;
+  justify-content: start;
+  align-items: center;
+}
+
+.transform-demo > ol > li > select {
+  justify-self: start;
+}
+
+.transform-demo .add-transform-controls {
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: start;
+  gap: 0.5em;
+}
+
+.transform-demo .transform-title {
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+@media (max-width: 600px) {
+  .transform-demo .transform-title {
+    grid-auto-flow: row;
+  }
+}
+.transform-demo .transform-title code {
+  font-size: 0.8em;
+}
+.transform-demo .transform-builtin-controls {
+  display: grid;
+  grid-auto-flow: column;
+  gap: inherit;
+  align-content: center;
+}
+
+.transform-demo canvas {
+  aspect-ratio: 16/9;
+  display: block;
+  width: 100%;
+  border-radius: 5px;
+  transition: filter 0.3s ease;
+}
+
+.transform-demo canvas:not(.active) {
+  filter: saturate(0) brightness(0.5);
+  cursor: pointer;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

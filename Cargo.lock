@@ -73,6 +73,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "midterm-skybox"
+version = "0.1.0"
+dependencies = [
+ "nalgebra",
+ "num-traits",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "nalgebra"
 version = "0.32.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

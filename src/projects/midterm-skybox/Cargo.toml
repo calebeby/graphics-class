@@ -1,0 +1,13 @@
+[package]
+name = "midterm-skybox"
+version = "0.1.0"
+
+[lib]
+path = "graphics.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.84"
+web-sys = { version = "0.3.61", features = ['console'] }
+nalgebra = "0.32.2"
+num-traits = "0.2.15"
