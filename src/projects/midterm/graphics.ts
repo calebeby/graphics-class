@@ -6,12 +6,12 @@ import skybox_fs_source from "./skybox-fragment-shader.glsl?raw";
 import * as rust from "./pkg";
 
 import type { GameState } from "./app";
-import skybox_right_texture from "./assets/skybox-right.jpg";
-import skybox_left_texture from "./assets/skybox-left.jpg";
-import skybox_up_texture from "./assets/skybox-up.jpg";
-import skybox_down_texture from "./assets/skybox-down.jpg";
-import skybox_back_texture from "./assets/skybox-back.jpg";
-import skybox_front_texture from "./assets/skybox-front.jpg";
+import skybox_right_texture from "./assets/skybox-right.png";
+import skybox_left_texture from "./assets/skybox-left.png";
+import skybox_up_texture from "./assets/skybox-up.png";
+import skybox_down_texture from "./assets/skybox-down.png";
+import skybox_back_texture from "./assets/skybox-back.png";
+import skybox_front_texture from "./assets/skybox-front.png";
 const load_image = (src: string) => {
   const img = new Image();
 
