@@ -1,15 +1,16 @@
 pub(crate) extern crate nalgebra;
 pub(crate) extern crate num_traits;
+pub(crate) extern crate rand;
 pub(crate) extern crate wasm_bindgen;
 mod bounding_box;
 mod face;
 mod load_obj;
+mod maze;
 mod ray;
-
-use std::collections::HashMap;
 
 use face::Face;
 use load_obj::load_obj;
+use maze::Maze;
 use nalgebra::{
     point, vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
 };
@@ -51,81 +52,6 @@ macro_rules! console_log {
             println!($($t)*);
         }
     };
-}
-
-#[wasm_bindgen]
-#[derive(Clone)]
-pub struct Maze {
-    faces: Vec<Face<f64>>,
-}
-
-fn points_to_float32array(points: &[Vector3<f64>]) -> Vec<f32> {
-    points
-        .iter()
-        .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
-        .collect()
-}
-
-#[wasm_bindgen]
-impl Maze {
-    #[wasm_bindgen]
-    pub fn points_to_float32array(&self) -> Vec<f32> {
-        points_to_float32array(
-            &self
-                .faces
-                .iter()
-                .flat_map(|face| {
-                    face.break_into_triangles()
-                        .iter()
-                        .map(|p| p.coords)
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>(),
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn normals_to_float32array(&self) -> Vec<f32> {
-        points_to_float32array(
-            &self
-                .faces
-                .iter()
-                .flat_map(|face| {
-                    face.break_into_triangles()
-                        .into_iter()
-                        .map(move |_triangle| face.normal().into_inner())
-                })
-                .collect::<Vec<_>>(),
-        )
-    }
-
-    #[wasm_bindgen]
-    pub fn smooth_normals_to_float32array(&self) -> Vec<f32> {
-        // Map from point ids to the corresponding "net normal" vector
-        let mut smooth_normals: HashMap<usize, Vector3<_>> = HashMap::new();
-        for face in &self.faces {
-            for &point_id in face.point_ids().unwrap() {
-                let normals = smooth_normals.entry(point_id).or_default();
-                *normals += face.normal().into_inner();
-            }
-        }
-        points_to_float32array(
-            &self
-                .faces
-                .iter()
-                .flat_map(|face| {
-                    face.break_into_triangles_with_ids()
-                        .into_iter()
-                        .map(|point_id| {
-                            smooth_normals
-                                .get(&point_id)
-                                .unwrap_or(&Vector3::zeros())
-                                .normalize()
-                        })
-                })
-                .collect::<Vec<_>>(),
-        )
-    }
 }
 
 #[wasm_bindgen]
@@ -285,58 +211,6 @@ impl Default for GameState {
             },
         }
     }
-}
-
-fn make_maze() -> Vec<Face<f64>> {
-    let scale = 1.0;
-    let front_right_bottom = Point3::new(0.5, -0.5, 0.5) * scale;
-    let front_left_bottom = Point3::new(-0.5, -0.5, 0.5) * scale;
-    let front_right_top = Point3::new(0.5, 0.5, 0.5) * scale;
-    let front_left_top = Point3::new(-0.5, 0.5, 0.5) * scale;
-
-    let back_right_bottom = Point3::new(0.5, -0.5, -0.5) * scale;
-    let back_left_bottom = Point3::new(-0.5, -0.5, -0.5) * scale;
-    let back_right_top = Point3::new(0.5, 0.5, -0.5) * scale;
-    let back_left_top = Point3::new(-0.5, 0.5, -0.5) * scale;
-
-    vec![
-        Face::new(vec![
-            front_right_top,
-            front_right_bottom,
-            front_left_bottom,
-            front_left_top,
-        ]),
-        Face::new(vec![
-            front_right_top,
-            back_right_top,
-            back_right_bottom,
-            front_right_bottom,
-        ]),
-        Face::new(vec![
-            front_left_top,
-            front_left_bottom,
-            back_left_bottom,
-            back_left_top,
-        ]),
-        Face::new(vec![
-            front_right_top,
-            front_left_top,
-            back_left_top,
-            back_right_top,
-        ]),
-        Face::new(vec![
-            front_right_bottom,
-            back_right_bottom,
-            back_left_bottom,
-            front_left_bottom,
-        ]),
-        Face::new(vec![
-            back_right_top,
-            back_left_top,
-            back_left_bottom,
-            back_right_bottom,
-        ]),
-    ]
 }
 
 #[wasm_bindgen]

@@ -31,14 +31,14 @@ pub(crate) fn load_obj(obj: &str) -> Vec<Face<f64>> {
             if face_vertices.len() != 3 {
                 panic!("Only triangles are supported in loading obj files for now",);
             }
-            let new_face = Face::new_with_point_ids(
+            let new_face = Face::new(
                 face_vertices
                     .iter()
                     .map(|face_vertex| {
                         let vertex_id: usize =
                             face_vertex.split('/').next().unwrap().parse().unwrap();
                         let vertex_id = vertex_id - 1;
-                        (vertices[vertex_id], vertex_id)
+                        vertices[vertex_id]
                     })
                     .collect(),
             );

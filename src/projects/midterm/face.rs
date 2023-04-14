@@ -16,16 +16,9 @@ pub(crate) struct Face<T: Number> {
     absolute_to_relative: Matrix3<T>,
     /// The coordinates of each point, in terms of the face-plane-defined x and y axis
     points_relative: Vec<Point2<T>>,
-    point_ids: Option<Vec<usize>>,
 }
 
 impl<T: Number> Face<T> {
-    pub(crate) fn new_with_point_ids(points: Vec<(Point3<T>, usize)>) -> Self {
-        let (points, point_ids) = points.into_iter().unzip();
-        let mut instance = Self::new(points);
-        instance.point_ids = Some(point_ids);
-        instance
-    }
     pub(crate) fn new(points: Vec<Point3<T>>) -> Self {
         assert!(points.len() >= 3);
         let point_0 = points[0].coords;
@@ -53,7 +46,6 @@ impl<T: Number> Face<T> {
             y,
             points_relative,
             absolute_to_relative,
-            point_ids: None,
         }
     }
 
@@ -62,14 +54,6 @@ impl<T: Number> Face<T> {
         self.points[1..]
             .windows(2)
             .flat_map(|pair_of_points| vec![self.points[0], pair_of_points[0], pair_of_points[1]])
-            .collect()
-    }
-
-    pub(crate) fn break_into_triangles_with_ids(&self) -> Vec<usize> {
-        let point_ids = self.point_ids.as_ref().unwrap();
-        point_ids[1..]
-            .windows(2)
-            .flat_map(|pair_of_points| vec![point_ids[0], pair_of_points[0], pair_of_points[1]])
             .collect()
     }
 
@@ -86,11 +70,6 @@ impl<T: Number> Face<T> {
     #[inline]
     pub(crate) fn points(&self) -> &[Point3<T>] {
         &self.points
-    }
-
-    #[inline]
-    pub(crate) fn point_ids(&self) -> Option<&Vec<usize>> {
-        self.point_ids.as_ref()
     }
 
     #[inline]
