@@ -36,16 +36,15 @@ impl Tunnel {
         let tunnel_dir = Unit::new_normalize(tunnel_vec);
         let up = start.up.into_inner();
         let right = -up.cross(&tunnel_dir);
-        let top_right_start = start.point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_HEIGHT / 2.0;
-        let top_right_end = end.point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_HEIGHT / 2.0;
+        let top_right_start = start.point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+        let top_right_end = end.point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
         let bottom_right_start =
-            start.point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_HEIGHT / 2.0;
-        let bottom_right_end = end.point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_HEIGHT / 2.0;
-        let bottom_left_start =
-            start.point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_HEIGHT / 2.0;
-        let bottom_left_end = end.point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_HEIGHT / 2.0;
-        let top_left_start = start.point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_HEIGHT / 2.0;
-        let top_left_end = end.point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_HEIGHT / 2.0;
+            start.point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+        let bottom_right_end = end.point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+        let bottom_left_start = start.point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+        let bottom_left_end = end.point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+        let top_left_start = start.point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+        let top_left_end = end.point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
         faces.extend_from_slice(&[
             Face::new(vec![
                 top_right_start,
@@ -103,18 +102,26 @@ impl Maze {
         );
         m.landings.push(landing_0);
         let landing_1 = Landing::new(
-            // point![10.0, 10.0, 0.0],
             point![10.0, 0.0, 0.0],
             Unit::new_normalize(vector![0.0, 1.0, 0.0]),
         );
         m.landings.push(landing_1);
+        let landing_2 = Landing::new(
+            point![8.0, 2.0, 3.0],
+            Unit::new_normalize(vector![0.0, 1.0, 0.0]),
+        );
+        m.landings.push(landing_2);
         m.tunnels.push(Tunnel {
             start_landing_id: 0,
             end_landing_id: 1,
         });
+        m.tunnels.push(Tunnel {
+            start_landing_id: 0,
+            end_landing_id: 2,
+        });
         // m.tunnels.push(Tunnel {
-        //     start_landing_id: 0,
-        //     end_landing_id: 1,
+        //     start_landing_id: 1,
+        //     end_landing_id: 2,
         // });
         m
     }
