@@ -20,7 +20,7 @@ pub(crate) struct Face<T: Number> {
 
 impl<T: Number> Face<T> {
     pub(crate) fn new(points: Vec<Point3<T>>) -> Self {
-        assert!(points.len() >= 3);
+        assert!(points.len() >= 3, "points must be 3 or more");
         let point_0 = points[0].coords;
         let point_1 = points[1].coords;
         let point_2 = points[2].coords;
@@ -33,7 +33,7 @@ impl<T: Number> Face<T> {
         let points_relative = points
             .iter()
             .map(|point| {
-                let p = absolute_to_relative * point;
+                let p = absolute_to_relative * (point - point_0);
                 Point2::new(p.x, p.y)
             })
             .collect();

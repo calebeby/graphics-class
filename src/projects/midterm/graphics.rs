@@ -9,7 +9,6 @@ mod maze;
 mod ray;
 
 use face::Face;
-use load_obj::load_obj;
 use maze::Maze;
 use nalgebra::{
     point, vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
@@ -30,6 +29,7 @@ pub(crate) trait Number:
     + nalgebra::SimdRealField
     + num_traits::Float
     + std::convert::Into<f64>
+    + std::convert::From<f32>
 {
 }
 impl Number for f64 {}
@@ -43,10 +43,11 @@ extern "C" {
     fn log(s: String);
 }
 
+#[macro_export]
 macro_rules! console_log {
     ($($t:tt)*) => {
         #[cfg(target_arch = "wasm32")] {
-            log(format!($($t)*));
+            $crate::log(format!($($t)*));
         }
         #[cfg(not(target_arch = "wasm32"))] {
             println!($($t)*);
@@ -114,15 +115,16 @@ impl GameState {
                 .transform_vector(&self.camera_direction),
         );
         let new_camera_position = self.camera_position + self.camera_velocity * dt;
-        let camera_movement_ray = Ray::new(-self.camera_position, -new_camera_position);
-        let camera_movement_direction = UnitVector3::new_normalize(camera_movement_ray.to_vector());
-        let camera_movement_ray_extended = Ray::new(
-            -self.camera_position,
-            // TODO:
-            -new_camera_position + camera_movement_direction.scale(1.1),
-        );
-        let has_intersection = self.maze.faces.iter().any(|face| {
-            let intersection = camera_movement_ray_extended.face_intersection(face);
+        // let camera_movement_ray = Ray::new(-self.camera_position, -new_camera_position);
+        let camera_movement_ray = Ray::new(self.camera_position, new_camera_position);
+        // let camera_movement_direction = UnitVector3::new_normalize(camera_movement_ray.to_vector());
+        // let camera_movement_ray_extended = Ray::new(
+        //     -self.camera_position,
+        //     // TODO:
+        //     -new_camera_position + camera_movement_direction.scale(1.1),
+        // );
+        let has_intersection = self.maze.faces().iter().enumerate().any(|(i, face)| {
+            let intersection = camera_movement_ray.face_intersection(face);
             intersection.is_some()
         });
         // let has_intersection = false;
@@ -134,16 +136,16 @@ impl GameState {
         let forwards = self.camera_direction.into_inner();
         let right = forwards.cross(&UP);
         if input_w {
-            self.camera_velocity -= accel * dt * forwards;
-        } else if input_s {
             self.camera_velocity += accel * dt * forwards;
+        } else if input_s {
+            self.camera_velocity -= accel * dt * forwards;
         } else {
             self.camera_velocity -= decel * (self.camera_velocity.dot(&forwards)) * forwards;
         }
         if input_a {
-            self.camera_velocity -= accel * dt * right;
-        } else if input_d {
             self.camera_velocity += accel * dt * right;
+        } else if input_d {
+            self.camera_velocity -= accel * dt * right;
         } else {
             self.camera_velocity -= decel * (self.camera_velocity.dot(&right)) * right;
         }
@@ -157,9 +159,9 @@ impl GameState {
     pub fn world_to_camera(&self) -> TransformMatrix {
         self.world_to_camera_without_camera_translation()
             .times(&TransformMatrix(Matrix4::new_translation(&Vector3::new(
-                self.camera_position.x,
-                self.camera_position.y,
-                self.camera_position.z,
+                -self.camera_position.x,
+                -self.camera_position.y,
+                -self.camera_position.z,
             ))))
     }
 
@@ -203,12 +205,10 @@ impl Default for GameState {
     fn default() -> Self {
         Self {
             aspect_ratio: 1.0,
-            camera_position: point![0.0, 0.0, -2.0],
+            camera_position: point![5.0, 1.5, 6.5],
             camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, -1.0]),
             camera_velocity: Vector3::zeros(),
-            maze: Maze {
-                faces: load_obj(include_str!("cat.obj")),
-            },
+            maze: Maze::generate(),
         }
     }
 }

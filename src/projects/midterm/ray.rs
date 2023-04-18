@@ -1,8 +1,8 @@
 use nalgebra::{one, OVector, Point, Point2, Point3};
 
-use crate::{bounding_box::BoundingBox, face::Face, Number};
+use crate::{bounding_box::BoundingBox, console_log, face::Face, Number};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Ray<T: Number, const DIM: usize> {
     start: Point<T, DIM>,
     end: Point<T, DIM>,
@@ -24,6 +24,14 @@ impl<T: Number, const DIM: usize> Ray<T, { DIM }> {
     #[inline]
     pub(crate) fn to_vector(&self) -> OVector<T, nalgebra::Const<DIM>> {
         self.end - self.start
+    }
+    #[inline]
+    pub(crate) fn start(&self) -> &Point<T, DIM> {
+        &self.start
+    }
+    #[inline]
+    pub(crate) fn end(&self) -> &Point<T, DIM> {
+        &self.end
     }
 }
 
@@ -123,18 +131,26 @@ impl<T: Number> Ray<T, 3> {
             return None;
         }
 
-        let intersection_relative_coords: Point3<T> = start_in_relative_coords
-            + ((end_in_relative_coords - start_in_relative_coords)
-                * (-start_in_relative_coords.z
-                    / (end_in_relative_coords.z - start_in_relative_coords.z)));
+        let intersection_relative_coords: Point3<T> = if end_in_relative_coords.z
+            == start_in_relative_coords.z
+        {
+            Point3::from(
+                (start_in_relative_coords.coords + end_in_relative_coords.coords).scale(0.5.into()),
+            )
+        } else {
+            start_in_relative_coords
+                + ((end_in_relative_coords - start_in_relative_coords)
+                    * (-start_in_relative_coords.z
+                        / (end_in_relative_coords.z - start_in_relative_coords.z)))
+        };
 
         // We have gotten through all the "easy cases",
         // now we have to decide if the (x, y) intersection is within the 2D shape
 
         // This algorithm draws a 2D ray between a "known point" outside the 2D shape,
         // and checks the number of times the 2D ray intersects with the 2D shape.
-        //
-        // If the ray crosses an even number of times,
+
+        // If the ray crosses an odd number of times,
         // the point we are testing is inside the shape.
         // Otherwise, the point is outside the shape.
 
@@ -170,13 +186,11 @@ impl<T: Number> Ray<T, 3> {
             })
             .count();
 
-        println!("num crossings {}", num_edge_crossings);
-
-        // If the ray crosses an even number of times,
+        // If the ray crosses an odd number of times,
         // the point we are testing is inside the shape.
         // Otherwise, the point is outside the shape.
-        if num_edge_crossings % 2 == 1 {
-            // Odd number of crossings => outside
+        if num_edge_crossings % 2 == 0 {
+            // Even number of crossings => outside
             return None;
         }
 
@@ -185,7 +199,6 @@ impl<T: Number> Ray<T, 3> {
                 + face.y().scale(intersection_relative_coords.y)
                 + face.normal().scale(intersection_relative_coords.z),
         );
-
         Some(face_intersection)
     }
 }
