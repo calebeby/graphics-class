@@ -117,30 +117,17 @@ impl GameState {
                 .transform_vector(&self.camera_direction),
         );
         let new_camera_position = self.camera_position + self.camera_velocity * dt;
-        // let camera_movement_ray = Ray::new(-self.camera_position, -new_camera_position);
         let camera_movement_ray = Ray::new(self.camera_position, new_camera_position);
-        // let camera_movement_direction = UnitVector3::new_normalize(camera_movement_ray.to_vector());
-        // let camera_movement_ray_extended = Ray::new(
-        //     -self.camera_position,
-        //     // TODO:
-        //     -new_camera_position + camera_movement_direction.scale(1.1),
-        // );
         let has_intersection = self.maze.faces().iter().any(|face| {
-            let polygon =
-                parry3d::shape::ConvexPolyhedron::from_convex_hull(face.points()).unwrap();
             let dist = parry3d::query::distance(
                 &nalgebra::Isometry::identity(),
-                &polygon,
+                &face.to_convex_polyhedron(),
                 &nalgebra::Isometry::identity(),
-                &parry3d::shape::Segment {
-                    a: *camera_movement_ray.start(),
-                    b: *camera_movement_ray.end(),
-                },
+                &camera_movement_ray.to_segment(),
             )
             .unwrap();
             dist < 0.1
         });
-        // let has_intersection = false;
         if !has_intersection {
             self.camera_position = new_camera_position;
         }
