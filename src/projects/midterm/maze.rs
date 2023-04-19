@@ -1,7 +1,11 @@
 use nalgebra::{point, vector, Point3, Unit, UnitVector3, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::{console_log, face::Face};
+use crate::face::Face;
+
+const TUNNEL_WIDTH: f64 = 2.0;
+const TUNNEL_HEIGHT: f64 = 4.0;
+const LANDING_RADIUS: f64 = 2.0;
 
 #[derive(Clone)]
 struct Landing {
@@ -27,24 +31,32 @@ struct Tunnel {
 
 impl Tunnel {
     fn faces(&self, maze: &Maze) -> Vec<Face<f64>> {
-        const TUNNEL_WIDTH: f64 = 2.0;
-        const TUNNEL_HEIGHT: f64 = 4.0;
         let mut faces = vec![];
-        let start = &maze.landings[self.start_landing_id];
-        let end = &maze.landings[self.end_landing_id];
-        let tunnel_vec = end.point.coords - start.point.coords;
+        let start_landing = &maze.landings[self.start_landing_id];
+        let end_landing = &maze.landings[self.end_landing_id];
+        let tunnel_vec = end_landing.point.coords - start_landing.point.coords;
+        // Dot products should be zero,
+        // showing that the "direction" of the tunnel should be perpendicular
+        // to the "up"s of the start and end landings
+        assert!(start_landing.up.dot(&tunnel_vec) < f64::EPSILON);
+        assert!(end_landing.up.dot(&tunnel_vec) < f64::EPSILON);
+
         let tunnel_dir = Unit::new_normalize(tunnel_vec);
-        let up = start.up.into_inner();
+        let start_point = start_landing.point + (tunnel_dir.into_inner() * LANDING_RADIUS);
+        let end_point = end_landing.point - (tunnel_dir.into_inner() * LANDING_RADIUS);
+        let inner_tunnel_vec = end_point - start_point;
+
+        let up = start_landing.up.into_inner();
         let right = -up.cross(&tunnel_dir);
-        let top_right_start = start.point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
-        let top_right_end = end.point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+        let top_right_start = start_point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+        let top_right_end = end_point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
         let bottom_right_start =
-            start.point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
-        let bottom_right_end = end.point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
-        let bottom_left_start = start.point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
-        let bottom_left_end = end.point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
-        let top_left_start = start.point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
-        let top_left_end = end.point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+            start_point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+        let bottom_right_end = end_point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+        let bottom_left_start = start_point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+        let bottom_left_end = end_point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+        let top_left_start = start_point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+        let top_left_end = end_point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
         faces.extend_from_slice(&[
             Face::new(vec![
                 top_right_start,
@@ -102,12 +114,12 @@ impl Maze {
         );
         m.landings.push(landing_0);
         let landing_1 = Landing::new(
-            point![10.0, 0.0, 0.0],
+            point![20.0, 0.0, 0.0],
             Unit::new_normalize(vector![0.0, 1.0, 0.0]),
         );
         m.landings.push(landing_1);
         let landing_2 = Landing::new(
-            point![8.0, 2.0, 3.0],
+            point![0.0, 0.0, 20.0],
             Unit::new_normalize(vector![0.0, 1.0, 0.0]),
         );
         m.landings.push(landing_2);

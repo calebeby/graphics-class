@@ -1,3 +1,4 @@
+extern crate console_error_panic_hook;
 pub(crate) extern crate nalgebra;
 pub(crate) extern crate num_traits;
 pub(crate) extern crate parry2d_f64 as parry2d;
@@ -89,6 +90,7 @@ impl TransformMatrix {
 impl GameState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
+        console_error_panic_hook::set_once();
         Default::default()
     }
 
