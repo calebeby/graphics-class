@@ -119,10 +119,10 @@ impl Maze {
             start_landing_id: 0,
             end_landing_id: 2,
         });
-        // m.tunnels.push(Tunnel {
-        //     start_landing_id: 1,
-        //     end_landing_id: 2,
-        // });
+        m.tunnels.push(Tunnel {
+            start_landing_id: 1,
+            end_landing_id: 2,
+        });
         m
     }
     #[wasm_bindgen]

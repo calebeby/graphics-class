@@ -1,5 +1,7 @@
 pub(crate) extern crate nalgebra;
 pub(crate) extern crate num_traits;
+pub(crate) extern crate parry2d_f64 as parry2d;
+pub(crate) extern crate parry3d_f64 as parry3d;
 pub(crate) extern crate rand;
 pub(crate) extern crate wasm_bindgen;
 mod bounding_box;
@@ -123,9 +125,20 @@ impl GameState {
         //     // TODO:
         //     -new_camera_position + camera_movement_direction.scale(1.1),
         // );
-        let has_intersection = self.maze.faces().iter().enumerate().any(|(i, face)| {
-            let intersection = camera_movement_ray.face_intersection(face);
-            intersection.is_some()
+        let has_intersection = self.maze.faces().iter().any(|face| {
+            let polygon =
+                parry3d::shape::ConvexPolyhedron::from_convex_hull(face.points()).unwrap();
+            let dist = parry3d::query::distance(
+                &nalgebra::Isometry::identity(),
+                &polygon,
+                &nalgebra::Isometry::identity(),
+                &parry3d::shape::Segment {
+                    a: *camera_movement_ray.start(),
+                    b: *camera_movement_ray.end(),
+                },
+            )
+            .unwrap();
+            dist < 0.1
         });
         // let has_intersection = false;
         if !has_intersection {
