@@ -120,16 +120,17 @@ impl GameState {
         );
         let new_camera_position = self.camera_position + self.camera_velocity * dt;
         let camera_movement_ray = Ray::new(self.camera_position, new_camera_position);
-        let has_intersection = self.maze.faces().iter().any(|face| {
-            let dist = parry3d::query::distance(
-                &nalgebra::Isometry::identity(),
-                &face.to_convex_polyhedron(),
-                &nalgebra::Isometry::identity(),
-                &camera_movement_ray.to_segment(),
-            )
-            .unwrap();
-            dist < 0.1
-        });
+        // let has_intersection = self.maze.faces().iter().any(|face| {
+        //     let dist = parry3d::query::distance(
+        //         &nalgebra::Isometry::identity(),
+        //         &face.to_convex_polyhedron(),
+        //         &nalgebra::Isometry::identity(),
+        //         &camera_movement_ray.to_segment(),
+        //     )
+        //     .unwrap();
+        //     dist < 0.1
+        // });
+        let has_intersection = false;
         if !has_intersection {
             self.camera_position = new_camera_position;
         }

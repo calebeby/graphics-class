@@ -43,6 +43,11 @@ impl<T: Number> Face<T> {
     pub(crate) fn normal(&self) -> &UnitVector3<T> {
         &self.normal
     }
+
+    #[inline]
+    pub(crate) fn points(&self) -> &[Point3<T>] {
+        &self.points
+    }
 }
 
 impl Face<f64> {
