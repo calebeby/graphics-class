@@ -1,7 +1,7 @@
 use nalgebra::{point, vector, Point3, Unit, UnitVector3, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::face::Face;
+use crate::{console_log, face::Face};
 
 const TUNNEL_WIDTH: f64 = 3.0;
 const TUNNEL_HEIGHT: f64 = 4.0;
@@ -21,6 +21,7 @@ pub(crate) trait Environment {
     /// Faces (not displayed) that when passed through,
     /// trigger a "handoff" of player control into the next environment
     fn exit_faces(&self) -> &[(EnvironmentIdentifier, Face<f64>)];
+    fn up(&self, camera_position: Point3<f64>) -> UnitVector3<f64>;
 }
 
 pub(crate) struct LandingEnvironment {
@@ -40,6 +41,9 @@ impl Environment for LandingEnvironment {
     }
     fn exit_faces(&self) -> &[(EnvironmentIdentifier, Face<f64>)] {
         &self.exit_faces
+    }
+    fn up(&self, camera_position: Point3<f64>) -> UnitVector3<f64> {
+        self.landing.up
     }
 }
 
@@ -127,6 +131,10 @@ pub(crate) struct TunnelEnvironment {
     end_face: Face<f64>,
     tunnel: Tunnel,
     exit_faces: Vec<(EnvironmentIdentifier, Face<f64>)>,
+    start_point: Point3<f64>,
+    end_point: Point3<f64>,
+    start_up: UnitVector3<f64>,
+    end_up: UnitVector3<f64>,
 }
 
 impl TunnelEnvironment {
@@ -140,6 +148,13 @@ impl Environment for TunnelEnvironment {
     }
     fn exit_faces(&self) -> &[(EnvironmentIdentifier, Face<f64>)] {
         &self.exit_faces
+    }
+    fn up(&self, camera_position: Point3<f64>) -> UnitVector3<f64> {
+        let start_to_camera = camera_position - self.start_point;
+        let tunnel_length_vector = self.end_point - self.start_point;
+        let percent =
+            start_to_camera.dot(&tunnel_length_vector) / tunnel_length_vector.magnitude_squared();
+        self.start_up.slerp(&self.end_up, percent)
     }
 }
 
@@ -250,6 +265,10 @@ impl Tunnel {
             end_face,
             tunnel: self.clone(),
             exit_faces,
+            start_point,
+            end_point,
+            start_up: start_landing.up,
+            end_up: end_landing.up,
         }
     }
 }

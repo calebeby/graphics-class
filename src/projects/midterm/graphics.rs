@@ -14,7 +14,7 @@ mod ray;
 use face::Face;
 use maze::{Environment, EnvironmentIdentifier, Maze};
 use nalgebra::{
-    point, vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
+    vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
 };
 use wasm_bindgen::prelude::*;
 
@@ -37,8 +37,6 @@ pub(crate) trait Number:
 }
 impl Number for f64 {}
 impl Number for f32 {}
-
-static UP: Vector3<f64> = vector![0.0, -1.0, 0.0];
 
 #[wasm_bindgen]
 extern "C" {
@@ -95,6 +93,10 @@ impl GameState {
         Default::default()
     }
 
+    fn up(&self) -> UnitVector3<f64> {
+        self.environment().up(self.camera_position)
+    }
+
     // It would be a good idea to have this accept the arguments as a struct,
     // but then I'd have to deal with JS binding generation for that struct.
     #[allow(clippy::too_many_arguments)]
@@ -108,15 +110,16 @@ impl GameState {
         cursor_movement_y: f64,
         delta_time_ms: usize,
     ) {
+        let up = self.up().into_inner();
         // In seconds, time since last render
         let dt = delta_time_ms as f64 / 1000.0;
         let rotation_scale = 0.01;
         let rotation_x = rotation_scale * cursor_movement_x;
         let rotation_y = rotation_scale * cursor_movement_y;
         let forwards = self.camera_direction.into_inner();
-        let right = forwards.cross(&UP);
+        let right = forwards.cross(&up);
         self.camera_direction = UnitVector3::new_normalize(
-            UnitQuaternion::new(UP * rotation_x + right * rotation_y)
+            UnitQuaternion::new(up * rotation_x + right * rotation_y)
                 .transform_vector(&self.camera_direction),
         );
         let new_camera_position = self.camera_position + self.camera_velocity * dt;
@@ -161,7 +164,7 @@ impl GameState {
         let accel = 15.0;
         let decel = 0.15;
         let forwards = self.camera_direction.into_inner();
-        let right = forwards.cross(&UP);
+        let right = forwards.cross(&up);
         if input_w {
             self.camera_velocity += accel * dt * forwards;
         } else if input_s {
@@ -214,7 +217,7 @@ impl GameState {
                         self.camera_direction.y,
                         self.camera_direction.z,
                     ),
-                    &UP,
+                    &self.up(),
                 ),
         )
     }
