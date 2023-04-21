@@ -13,5 +13,6 @@ void main() {
   texture_coordinates = cube_vertex;
 
   // All modifications are pulled in via attributes
-  gl_Position = transform * cube_vertex;
+  // The skybox had its up set to the -y direction so the negative here flips it
+  gl_Position = -transform * cube_vertex;
 }
