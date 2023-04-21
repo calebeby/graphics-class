@@ -14,7 +14,7 @@ mod ray;
 use face::Face;
 use maze::{Environment, EnvironmentIdentifier, Maze};
 use nalgebra::{
-    vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
+    vector, Matrix4, Point3, Scale3, Translation3, Unit, UnitQuaternion, UnitVector3, Vector3,
 };
 use wasm_bindgen::prelude::*;
 
@@ -147,7 +147,7 @@ impl GameState {
             self.current_environment = new_environment;
             self.camera_position = new_camera_position;
         } else {
-            let has_intersection = self.environment().faces().iter().any(|face| {
+            let intersecting_face = self.environment().faces().iter().find(|face| {
                 let dist = parry3d::query::distance(
                     &nalgebra::Isometry::identity(),
                     &face.to_convex_polyhedron(),
@@ -157,7 +157,9 @@ impl GameState {
                 .unwrap();
                 dist < 0.1
             });
-            if !has_intersection {
+            if let Some(_intersecting_face) = intersecting_face {
+                self.camera_velocity = Vector3::zeros();
+            } else {
                 self.camera_position = new_camera_position;
             }
         }

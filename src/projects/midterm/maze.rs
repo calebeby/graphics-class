@@ -1,7 +1,7 @@
 use nalgebra::{point, vector, Point3, Unit, UnitVector3, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::{console_log, face::Face};
+use crate::face::Face;
 
 const TUNNEL_WIDTH: f64 = 3.0;
 const TUNNEL_HEIGHT: f64 = 4.0;
