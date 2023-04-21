@@ -12,7 +12,7 @@ mod maze;
 mod ray;
 
 use face::Face;
-use maze::Maze;
+use maze::{Environment, EnvironmentIdentifier, Maze};
 use nalgebra::{
     point, vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
 };
@@ -65,6 +65,7 @@ pub struct GameState {
     camera_velocity: Vector3<f64>,
     aspect_ratio: f64,
     maze: Maze,
+    current_environment: EnvironmentIdentifier,
 }
 
 /// A little wrapper around the nalgebra matrix4 class, for JS use,
@@ -120,19 +121,42 @@ impl GameState {
         );
         let new_camera_position = self.camera_position + self.camera_velocity * dt;
         let camera_movement_ray = Ray::new(self.camera_position, new_camera_position);
-        // let has_intersection = self.maze.faces().iter().any(|face| {
-        //     let dist = parry3d::query::distance(
-        //         &nalgebra::Isometry::identity(),
-        //         &face.to_convex_polyhedron(),
-        //         &nalgebra::Isometry::identity(),
-        //         &camera_movement_ray.to_segment(),
-        //     )
-        //     .unwrap();
-        //     dist < 0.1
-        // });
-        let has_intersection = false;
-        if !has_intersection {
+        let environment = self.environment();
+        // If the camera passes through an "exit face",
+        // the camera has switched to a new environment.
+        let exit_faces = environment.exit_faces();
+        let new_environment = exit_faces.iter().find_map(|(new_environment, exit_face)| {
+            let crosses = parry3d::query::intersection_test(
+                &nalgebra::Isometry::identity(),
+                &exit_face.to_convex_polyhedron(),
+                &nalgebra::Isometry::identity(),
+                &camera_movement_ray.to_segment(),
+            )
+            .unwrap();
+            if crosses {
+                console_log!("Crossed into {:?}", new_environment);
+                Some(new_environment)
+            } else {
+                None
+            }
+        });
+        if let Some(&new_environment) = new_environment {
+            self.current_environment = new_environment;
             self.camera_position = new_camera_position;
+        } else {
+            let has_intersection = self.environment().faces().iter().any(|face| {
+                let dist = parry3d::query::distance(
+                    &nalgebra::Isometry::identity(),
+                    &face.to_convex_polyhedron(),
+                    &nalgebra::Isometry::identity(),
+                    &camera_movement_ray.to_segment(),
+                )
+                .unwrap();
+                dist < 0.1
+            });
+            if !has_intersection {
+                self.camera_position = new_camera_position;
+            }
         }
         let accel = 15.0;
         let decel = 0.15;
@@ -157,6 +181,14 @@ impl GameState {
         // So I added this
         let camera_up = forwards.cross(&right);
         self.camera_velocity -= decel * (self.camera_velocity.dot(&camera_up)) * camera_up;
+    }
+
+    #[inline]
+    fn environment(&self) -> &dyn Environment {
+        match self.current_environment {
+            EnvironmentIdentifier::Tunnel(id) => &self.maze.tunnels()[id],
+            EnvironmentIdentifier::Landing(id) => &self.maze.landings()[id],
+        }
     }
 
     pub fn world_to_camera(&self) -> TransformMatrix {
@@ -197,21 +229,29 @@ impl GameState {
         self.aspect_ratio = aspect_ratio;
     }
 
-    #[wasm_bindgen(getter)]
-    pub fn maze(&self) -> Maze {
-        self.maze.clone()
+    #[wasm_bindgen]
+    pub fn points_to_float32array(&self) -> Vec<f32> {
+        self.maze.points_to_float32array()
+    }
+
+    #[wasm_bindgen]
+    pub fn normals_to_float32array(&self) -> Vec<f32> {
+        self.maze.normals_to_float32array()
     }
 }
 
 impl Default for GameState {
     #[inline]
     fn default() -> Self {
+        let maze = Maze::generate();
+        let starting_landing = maze.landings()[0].landing();
         Self {
             aspect_ratio: 1.0,
-            camera_position: point![5.0, 1.5, 6.5],
+            camera_position: starting_landing.point,
             camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, -1.0]),
             camera_velocity: Vector3::zeros(),
-            maze: Maze::generate(),
+            current_environment: EnvironmentIdentifier::Landing(starting_landing.id),
+            maze,
         }
     }
 }

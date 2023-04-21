@@ -46,8 +46,8 @@ export const Midterm = ({}: Props) => {
         objects: [
           {
             transform_matrix: new rust.TransformMatrix(0, 0, 0),
-            vertex_coords: rust_state.maze.points_to_float32array(),
-            vertex_normals: rust_state.maze.normals_to_float32array(),
+            vertex_coords: rust_state.points_to_float32array(),
+            vertex_normals: rust_state.normals_to_float32array(),
           },
         ],
         is_active: false,
