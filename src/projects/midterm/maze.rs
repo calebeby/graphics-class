@@ -642,19 +642,47 @@ impl Maze {
             };
             let landing = &maze.landings[start_landing_id];
 
-            let dead_end_direction = rotate(*landing.up * angle, input_direction);
-            let dead_end_vec = dead_end_direction * rng.sample(tunnel_length_range);
-            let dead_end_point = landing.point + dead_end_vec;
-            let segment = parry3d::shape::Segment::new(landing.point, dead_end_point);
-            // space_claims.push(segment);
-            let dead_end = maze.add_dead_end(
-                dead_end_point,
-                Unit::new_normalize(rotate(
-                    dead_end_vec.normalize() * rng.sample(tunnel_twist_range),
-                    &landing.up,
-                )),
-            );
-            maze.add_tunnel(ConnectorIdentifier::Landing(start_landing_id), dead_end);
+            let connector_direction = rotate(*landing.up * angle, input_direction);
+            let connector_vec = connector_direction * rng.sample(tunnel_length_range);
+            let connector_point = landing.point + connector_vec;
+            let connector_up = Unit::new_normalize(rotate(
+                connector_vec.normalize() * rng.sample(tunnel_twist_range),
+                &landing.up,
+            ));
+            let segment = parry3d::shape::Segment::new(landing.point, connector_point);
+            let make_dead_end = rng.gen_bool(0.5);
+            console_log!("make dead end {}", make_dead_end);
+            if make_dead_end {
+                let dead_end = maze.add_dead_end(connector_point, connector_up);
+                maze.add_tunnel(ConnectorIdentifier::Landing(start_landing_id), dead_end);
+            } else {
+                // making a landing
+                let new_landing_id = maze.add_landing(connector_point, connector_up);
+                maze.add_tunnel(
+                    ConnectorIdentifier::Landing(start_landing_id),
+                    new_landing_id,
+                );
+                let landing_rotation_range: Uniform<f64> = Uniform::new(
+                    min_angle_between_tunnels(),
+                    1.5 * min_angle_between_tunnels(),
+                );
+                let angle_1 = rng.sample(landing_rotation_range);
+                let angle_2 = angle_1 + rng.sample(landing_rotation_range);
+                extend_landing(
+                    new_landing_id,
+                    &Unit::new_normalize(-connector_direction),
+                    angle_1,
+                    rng,
+                    maze,
+                );
+                extend_landing(
+                    new_landing_id,
+                    &Unit::new_normalize(-connector_direction),
+                    angle_2,
+                    rng,
+                    maze,
+                );
+            }
         }
 
         let start_point = point![0.0, 0.0, 0.0];
