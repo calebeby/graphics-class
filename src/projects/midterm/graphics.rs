@@ -14,7 +14,7 @@ mod ray;
 use face::Face;
 use maze::{Environment, EnvironmentIdentifier, Maze};
 use nalgebra::{
-    vector, Matrix4, Point3, Scale3, Translation3, Unit, UnitQuaternion, UnitVector3, Vector3,
+    vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector2, Vector3,
 };
 use wasm_bindgen::prelude::*;
 
@@ -243,6 +243,11 @@ impl GameState {
     pub fn normals_to_float32array(&self) -> Vec<f32> {
         self.maze.normals_to_float32array()
     }
+
+    #[wasm_bindgen]
+    pub fn uvs_to_float32array(&self) -> Vec<f32> {
+        self.maze.uvs_to_float32array()
+    }
 }
 
 impl Default for GameState {
@@ -276,42 +281,90 @@ pub fn generate_skybox_points() -> Vec<f32> {
         let back_left_top = Point3::new(-0.5, 0.5, -0.5) * scale;
 
         vec![
-            Face::new(vec![
-                front_right_top,
-                front_right_bottom,
-                front_left_bottom,
-                front_left_top,
-            ]),
-            Face::new(vec![
-                front_right_top,
-                back_right_top,
-                back_right_bottom,
-                front_right_bottom,
-            ]),
-            Face::new(vec![
-                front_left_top,
-                front_left_bottom,
-                back_left_bottom,
-                back_left_top,
-            ]),
-            Face::new(vec![
-                front_right_top,
-                front_left_top,
-                back_left_top,
-                back_right_top,
-            ]),
-            Face::new(vec![
-                front_right_bottom,
-                back_right_bottom,
-                back_left_bottom,
-                front_left_bottom,
-            ]),
-            Face::new(vec![
-                back_right_top,
-                back_left_top,
-                back_left_bottom,
-                back_right_bottom,
-            ]),
+            Face::new(
+                vec![
+                    front_right_top,
+                    front_right_bottom,
+                    front_left_bottom,
+                    front_left_top,
+                ],
+                vec![
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                ],
+            ),
+            Face::new(
+                vec![
+                    front_right_top,
+                    back_right_top,
+                    back_right_bottom,
+                    front_right_bottom,
+                ],
+                vec![
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                ],
+            ),
+            Face::new(
+                vec![
+                    front_left_top,
+                    front_left_bottom,
+                    back_left_bottom,
+                    back_left_top,
+                ],
+                vec![
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                ],
+            ),
+            Face::new(
+                vec![
+                    front_right_top,
+                    front_left_top,
+                    back_left_top,
+                    back_right_top,
+                ],
+                vec![
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                ],
+            ),
+            Face::new(
+                vec![
+                    front_right_bottom,
+                    back_right_bottom,
+                    back_left_bottom,
+                    front_left_bottom,
+                ],
+                vec![
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                ],
+            ),
+            Face::new(
+                vec![
+                    back_right_top,
+                    back_left_top,
+                    back_left_bottom,
+                    back_right_bottom,
+                ],
+                vec![
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                    Vector2::zeros(),
+                ],
+            ),
         ]
     };
 

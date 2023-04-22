@@ -1,7 +1,7 @@
-use nalgebra::{point, vector, Point3, Unit, UnitVector3, Vector3};
+use nalgebra::{point, vector, Point3, Unit, UnitVector3, Vector2, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::face::Face;
+use crate::face::{Face, UVPair};
 
 const TUNNEL_WIDTH: f64 = 3.0;
 const TUNNEL_HEIGHT: f64 = 4.0;
@@ -42,7 +42,7 @@ impl Environment for LandingEnvironment {
     fn exit_faces(&self) -> &[(EnvironmentIdentifier, Face<f64>)] {
         &self.exit_faces
     }
-    fn up(&self, camera_position: Point3<f64>) -> UnitVector3<f64> {
+    fn up(&self, _camera_position: Point3<f64>) -> UnitVector3<f64> {
         self.landing.up
     }
 }
@@ -70,49 +70,62 @@ impl Landing {
         let floor_center = self.point - self.up.into_inner() * TUNNEL_HEIGHT / 2.0;
         let floor_to_ceiling = self.up.into_inner() * TUNNEL_HEIGHT;
         // TODO: probably need to sort the tunnels here?
-        let floor = Face::new(
-            self.tunnel_ids
-                .iter()
-                .flat_map(|&tunnel_id| {
-                    let tunnel = &maze.tunnels[tunnel_id];
-                    let towards_tunnel = Unit::new_normalize(
-                        if self.id == maze.landings[tunnel.start_landing_id].id {
-                            // self is start landing
-                            maze.landings[tunnel.end_landing_id].point - self.point
-                        } else {
-                            // self is end landing
-                            maze.landings[tunnel.start_landing_id].point - self.point
-                        },
-                    )
+        let floor_points: Vec<Point3<f64>> = self
+            .tunnel_ids
+            .iter()
+            .flat_map(|&tunnel_id| {
+                let tunnel = &maze.tunnels[tunnel_id];
+                let towards_tunnel =
+                    Unit::new_normalize(if self.id == maze.landings[tunnel.start_landing_id].id {
+                        // self is start landing
+                        maze.landings[tunnel.end_landing_id].point - self.point
+                    } else {
+                        // self is end landing
+                        maze.landings[tunnel.start_landing_id].point - self.point
+                    })
                     .into_inner();
-                    let right = towards_tunnel.cross(&self.up);
-                    let door_bottom_left =
-                        floor_center + TUNNEL_WIDTH / 2.0 * right + LANDING_RADIUS * towards_tunnel;
-                    let door_bottom_right =
-                        floor_center - TUNNEL_WIDTH / 2.0 * right + LANDING_RADIUS * towards_tunnel;
-                    exit_faces.push((
-                        EnvironmentIdentifier::Tunnel(tunnel_id),
-                        Face::new(vec![
+                let right = towards_tunnel.cross(&self.up);
+                let door_bottom_left =
+                    floor_center + TUNNEL_WIDTH / 2.0 * right + LANDING_RADIUS * towards_tunnel;
+                let door_bottom_right =
+                    floor_center - TUNNEL_WIDTH / 2.0 * right + LANDING_RADIUS * towards_tunnel;
+                exit_faces.push((
+                    EnvironmentIdentifier::Tunnel(tunnel_id),
+                    Face::new(
+                        vec![
                             door_bottom_left,
                             door_bottom_right,
                             door_bottom_right + floor_to_ceiling,
                             door_bottom_left + floor_to_ceiling,
-                        ]),
-                    ));
-                    [door_bottom_left, door_bottom_right]
-                })
-                .chain(if self.tunnel_ids.len() >= 2 {
-                    vec![]
-                } else {
-                    vec![self.point - self.up.into_inner() * TUNNEL_HEIGHT / 2.0]
-                })
-                .collect(),
-        );
+                        ],
+                        vec![
+                            Vector2::zeros(),
+                            Vector2::zeros(),
+                            Vector2::zeros(),
+                            Vector2::zeros(),
+                        ],
+                    ),
+                ));
+                [door_bottom_left, door_bottom_right]
+            })
+            .chain(if self.tunnel_ids.len() >= 2 {
+                vec![]
+            } else {
+                vec![self.point - self.up.into_inner() * TUNNEL_HEIGHT / 2.0]
+            })
+            .collect();
+        let floor_uvs = floor_points.iter().map(|_point| Vector2::zeros()).collect();
+        let floor = Face::new(floor_points, floor_uvs);
         let ceiling = Face::new(
             floor
                 .points()
                 .iter()
                 .map(|point| point + floor_to_ceiling)
+                .collect(),
+            floor
+                .points()
+                .iter()
+                .map(|_point| Vector2::zeros())
                 .collect(),
         );
         let faces = vec![floor, ceiling];
@@ -180,11 +193,12 @@ impl Tunnel {
         let end_point = end_landing.point - (tunnel_dir.into_inner() * LANDING_RADIUS);
         let inner_tunnel_vec = end_point - start_point;
 
-        type P = Point3<f64>;
+        type P = UVPair<f64>;
 
         // This will hold "twisting frames",
         // rectangles that are twisted from the start to the end.
-        let frames: Vec<(P, P, P, P)> = (0..=TUNNEL_SUBDIVISIONS)
+        // Why are there 5 points instead of 4? Read the comment about top_right_repeat
+        let frames: Vec<(P, P, P, P, P)> = (0..=TUNNEL_SUBDIVISIONS)
             .map(|subdivision_i| {
                 let percent = (subdivision_i as f64) / (TUNNEL_SUBDIVISIONS as f64);
                 let up = start_landing
@@ -193,46 +207,88 @@ impl Tunnel {
                     .into_inner();
                 let right = -up.cross(&tunnel_dir);
                 let frame_center = Point3::from(percent * inner_tunnel_vec + start_point.coords);
-                let top_right =
-                    frame_center + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
-                let bottom_right =
-                    frame_center - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
-                let bottom_left =
-                    frame_center - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
-                let top_left = frame_center + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
-                (top_right, bottom_right, bottom_left, top_left)
+                const UV_SCALE: f64 = 0.2;
+                let uv_x = percent * UV_SCALE * inner_tunnel_vec.magnitude();
+                let top_right = UVPair {
+                    point: frame_center + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0,
+                    uv: Vector2::new(uv_x, 0.0 * UV_SCALE),
+                };
+                let bottom_right = UVPair {
+                    point: frame_center - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0,
+                    uv: Vector2::new(uv_x, TUNNEL_HEIGHT * UV_SCALE),
+                };
+                let bottom_left = UVPair {
+                    point: frame_center - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0,
+                    uv: Vector2::new(uv_x, (TUNNEL_WIDTH + TUNNEL_HEIGHT) * UV_SCALE),
+                };
+                let top_left = UVPair {
+                    point: frame_center + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0,
+                    uv: Vector2::new(uv_x, (TUNNEL_WIDTH + 2.0 * TUNNEL_HEIGHT) * UV_SCALE),
+                };
+                // Why is this repeated?
+                // Because we need a different UV point for when we "wrap back around".
+                // So this point has the same point value but a different UV than top_right
+                let top_right_repeat = UVPair {
+                    point: frame_center + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0,
+                    uv: Vector2::new(uv_x, (2.0 * TUNNEL_WIDTH + 2.0 * TUNNEL_HEIGHT) * UV_SCALE),
+                };
+                (
+                    top_right,
+                    bottom_right,
+                    bottom_left,
+                    top_left,
+                    top_right_repeat,
+                )
             })
             .collect();
 
         let faces = frames
             .windows(2)
             .flat_map(|frames| {
-                let (front_top_right, front_bottom_right, front_bottom_left, front_top_left) =
-                    frames[0];
-                let (back_top_right, back_bottom_right, back_bottom_left, back_top_left) =
-                    frames[1];
+                let (
+                    front_top_right,
+                    front_bottom_right,
+                    front_bottom_left,
+                    front_top_left,
+                    front_top_right_repeat,
+                ) = frames[0];
+                let (
+                    back_top_right,
+                    back_bottom_right,
+                    back_bottom_left,
+                    back_top_left,
+                    back_top_right_repeat,
+                ) = frames[1];
 
                 [
                     // Right
-                    Face::new(vec![front_top_right, back_top_right, back_bottom_right]),
-                    Face::new(vec![back_bottom_right, front_bottom_right, front_top_right]),
+                    Face::from_uv_pairs(vec![front_top_right, back_top_right, back_bottom_right]),
+                    Face::from_uv_pairs(vec![
+                        back_bottom_right,
+                        front_bottom_right,
+                        front_top_right,
+                    ]),
                     // Bottom
-                    Face::new(vec![
+                    Face::from_uv_pairs(vec![
                         front_bottom_right,
                         back_bottom_right,
                         back_bottom_left,
                     ]),
-                    Face::new(vec![
+                    Face::from_uv_pairs(vec![
                         back_bottom_left,
                         front_bottom_left,
                         front_bottom_right,
                     ]),
                     // Left
-                    Face::new(vec![front_bottom_left, back_bottom_left, back_top_left]),
-                    Face::new(vec![back_top_left, front_top_left, front_bottom_left]),
+                    Face::from_uv_pairs(vec![front_bottom_left, back_bottom_left, back_top_left]),
+                    Face::from_uv_pairs(vec![back_top_left, front_top_left, front_bottom_left]),
                     // Top
-                    Face::new(vec![front_top_left, back_top_left, back_top_right]),
-                    Face::new(vec![back_top_right, front_top_right, front_top_left]),
+                    Face::from_uv_pairs(vec![front_top_left, back_top_left, back_top_right_repeat]),
+                    Face::from_uv_pairs(vec![
+                        back_top_right_repeat,
+                        front_top_right_repeat,
+                        front_top_left,
+                    ]),
                 ]
             })
             .collect();
@@ -240,13 +296,34 @@ impl Tunnel {
         let start_frame = frames.first().unwrap();
         let end_frame = frames.last().unwrap();
 
-        let start_face = Face::new(vec![
-            start_frame.0,
-            start_frame.1,
-            start_frame.2,
-            start_frame.3,
-        ]);
-        let end_face = Face::new(vec![end_frame.0, end_frame.1, end_frame.2, end_frame.3]);
+        let start_face = Face::new(
+            vec![
+                start_frame.0.point,
+                start_frame.1.point,
+                start_frame.2.point,
+                start_frame.3.point,
+            ],
+            vec![
+                Vector2::zeros(),
+                Vector2::zeros(),
+                Vector2::zeros(),
+                Vector2::zeros(),
+            ],
+        );
+        let end_face = Face::new(
+            vec![
+                end_frame.0.point,
+                end_frame.1.point,
+                end_frame.2.point,
+                end_frame.3.point,
+            ],
+            vec![
+                Vector2::zeros(),
+                Vector2::zeros(),
+                Vector2::zeros(),
+                Vector2::zeros(),
+            ],
+        );
 
         let exit_faces = vec![
             (
@@ -386,6 +463,20 @@ impl Maze {
                 .collect::<Vec<_>>(),
         )
     }
+
+    #[wasm_bindgen]
+    pub fn uvs_to_float32array(&self) -> Vec<f32> {
+        self.faces()
+            .iter()
+            .flat_map(|face| {
+                face.break_into_uv_triangles()
+                    .iter()
+                    .flat_map(|triangle| [triangle.x as f32, triangle.y as f32])
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
     #[inline]
     pub(crate) fn faces(&self) -> Vec<Face<f64>> {
         self.tunnels

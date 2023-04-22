@@ -12,6 +12,7 @@ import skybox_up_texture from "./assets/skybox-up.png";
 import skybox_down_texture from "./assets/skybox-down.png";
 import skybox_back_texture from "./assets/skybox-back.png";
 import skybox_front_texture from "./assets/skybox-front.png";
+import metal_texture from "./assets/metal-texture.jpg";
 const load_image = (src: string) => {
   const img = new Image();
 
@@ -74,9 +75,28 @@ export const init_canvas = (
     });
   });
 
+  load_image(metal_texture).then((image) => {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(
+      gl.TEXTURE_2D, //What kind of texture are we loading in
+      0, // Level of detail, 0 base level
+      gl.RGBA, // Internal (target) format of data, in this case Red, Gree, Blue, Alpha
+      image.width, // Width of texture data (max is 1024, but maybe more)
+      image.height, // Height of texture data
+      0, //border (must be zero)
+      gl.RGBA, //Format of input data (in this case we added the alpha when reading in data)
+      gl.UNSIGNED_BYTE, //Type of data being passed in
+      image,
+    );
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  });
+
   // Hardcoded to match the layout locations declared in the vertex shader
   const attrib_id_obj_vertex = 0;
   const attrib_id_obj_normals = 1;
+  const attrib_id_obj_uvs = 2;
 
   game_state.skybox_vert_buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, game_state.skybox_vert_buffer);
@@ -91,6 +111,10 @@ export const init_canvas = (
     object.obj_normals_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_normals_buffer);
     gl.bufferData(gl.ARRAY_BUFFER, object.vertex_normals, gl.STATIC_DRAW);
+
+    object.obj_uvs_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_uvs_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, object.vertex_uvs, gl.STATIC_DRAW);
   }
 
   // Depth Test Enable (only render things 'forward' of other things)
@@ -217,6 +241,7 @@ export const init_canvas = (
       if (!object.obj_vert_buffer) throw new Error("missing obj_vert_buffer");
       if (!object.obj_normals_buffer)
         throw new Error("missing obj_normals_buffer");
+      if (!object.obj_uvs_buffer) throw new Error("missing obj_uvs_buffer");
       gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_vert_buffer);
       gl.enableVertexAttribArray(attrib_id_obj_vertex);
       gl.vertexAttribPointer(
@@ -232,6 +257,16 @@ export const init_canvas = (
       gl.vertexAttribPointer(
         attrib_id_obj_normals, // Attribute in question
         4, // Number of elements (vec4)
+        gl.FLOAT, // Type of element
+        false, // Normalize? Nope
+        0, // No stride (steps between indexes)
+        0, // initial offset
+      );
+      gl.bindBuffer(gl.ARRAY_BUFFER, object.obj_uvs_buffer);
+      gl.enableVertexAttribArray(attrib_id_obj_uvs);
+      gl.vertexAttribPointer(
+        attrib_id_obj_uvs, // Attribute in question
+        2, // Number of elements (vec2)
         gl.FLOAT, // Type of element
         false, // Normalize? Nope
         0, // No stride (steps between indexes)

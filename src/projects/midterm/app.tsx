@@ -9,8 +9,10 @@ export interface GameObject {
   transform_matrix: rust.TransformMatrix;
   vertex_coords: Float32Array;
   vertex_normals: Float32Array;
+  vertex_uvs: Float32Array;
   obj_vert_buffer?: WebGLBuffer | null;
   obj_normals_buffer?: WebGLBuffer | null;
+  obj_uvs_buffer?: WebGLBuffer | null;
 }
 
 export interface GameState {
@@ -48,6 +50,7 @@ export const Midterm = ({}: Props) => {
             transform_matrix: new rust.TransformMatrix(0, 0, 0),
             vertex_coords: rust_state.points_to_float32array(),
             vertex_normals: rust_state.normals_to_float32array(),
+            vertex_uvs: rust_state.uvs_to_float32array(),
           },
         ],
         is_active: false,

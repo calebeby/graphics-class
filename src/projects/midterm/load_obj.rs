@@ -1,4 +1,4 @@
-use nalgebra::Point3;
+use nalgebra::{Point3, Vector2};
 
 use crate::face::Face;
 
@@ -31,17 +31,16 @@ pub(crate) fn load_obj(obj: &str) -> Vec<Face<f64>> {
             if face_vertices.len() != 3 {
                 panic!("Only triangles are supported in loading obj files for now",);
             }
-            let new_face = Face::new(
-                face_vertices
-                    .iter()
-                    .map(|face_vertex| {
-                        let vertex_id: usize =
-                            face_vertex.split('/').next().unwrap().parse().unwrap();
-                        let vertex_id = vertex_id - 1;
-                        vertices[vertex_id]
-                    })
-                    .collect(),
-            );
+            let face_points: Vec<Point3<f64>> = face_vertices
+                .iter()
+                .map(|face_vertex| {
+                    let vertex_id: usize = face_vertex.split('/').next().unwrap().parse().unwrap();
+                    let vertex_id = vertex_id - 1;
+                    vertices[vertex_id]
+                })
+                .collect();
+            let face_uvs = face_points.iter().map(|_point| Vector2::zeros()).collect();
+            let new_face = Face::new(face_points, face_uvs);
             faces.push(new_face);
         } else {
             panic!("Unrecognized command on line {}: {}", line_num, command);
