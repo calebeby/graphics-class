@@ -12,6 +12,7 @@ web-sys = { version = "0.3.61", features = ['console'] }
 nalgebra = "0.32.2"
 num-traits = "0.2.15"
 rand = "0.8.5"
+rand_chacha = "0.3.1"
 getrandom = { version = "0.2.6", features = ["js"] }
 parry2d-f64 = "0.13.4"
 parry3d-f64 = "0.13.4"

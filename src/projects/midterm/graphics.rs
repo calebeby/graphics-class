@@ -4,6 +4,7 @@ pub(crate) extern crate num_traits;
 pub(crate) extern crate parry2d_f64 as parry2d;
 pub(crate) extern crate parry3d_f64 as parry3d;
 pub(crate) extern crate rand;
+pub(crate) extern crate rand_chacha;
 pub(crate) extern crate wasm_bindgen;
 mod bounding_box;
 mod face;

@@ -132,6 +132,7 @@ dependencies = [
  "parry2d-f64",
  "parry3d-f64",
  "rand",
+ "rand_chacha",
  "wasm-bindgen",
  "web-sys",
 ]
