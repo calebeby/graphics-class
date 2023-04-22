@@ -6,7 +6,11 @@ use crate::face::{Face, UVPair};
 const TUNNEL_WIDTH: f64 = 3.0;
 const TUNNEL_HEIGHT: f64 = 4.0;
 const LANDING_RADIUS: f64 = 2.0;
-const TUNNEL_SUBDIVISIONS: usize = 20;
+const TUNNEL_SUBDIVISIONS: usize = 10;
+
+fn min_angle_between_tunnels() -> f64 {
+    2.0 * f64::atan((TUNNEL_WIDTH / 2.0) / LANDING_RADIUS)
+}
 
 /// The kinds of thing you can be "in" - like a room.
 /// The usize represents the corresponding id.
@@ -65,25 +69,62 @@ impl Landing {
         }
     }
     fn to_environment(&self, maze: &MazeDescriptor) -> LandingEnvironment {
+        assert!(self.tunnel_ids.len() >= 2);
         let mut exit_faces: Vec<(EnvironmentIdentifier, Face<f64>)> = vec![];
 
         let floor_center = self.point - self.up.into_inner() * TUNNEL_HEIGHT / 2.0;
         let floor_to_ceiling = self.up.into_inner() * TUNNEL_HEIGHT;
-        // TODO: probably need to sort the tunnels here?
-        let floor_points: Vec<Point3<f64>> = self
+        let mut sorted_tunnels: Vec<_> = self
             .tunnel_ids
             .iter()
-            .flat_map(|&tunnel_id| {
+            .map(|&tunnel_id| {
                 let tunnel = &maze.tunnels[tunnel_id];
-                let towards_tunnel =
-                    Unit::new_normalize(if self.id == maze.landings[tunnel.start_landing_id].id {
-                        // self is start landing
-                        maze.landings[tunnel.end_landing_id].point - self.point
-                    } else {
-                        // self is end landing
-                        maze.landings[tunnel.start_landing_id].point - self.point
-                    })
-                    .into_inner();
+                let towards_tunnel = Unit::new_normalize(if self.id == tunnel.start_landing_id {
+                    // self is start landing
+                    maze.landings[tunnel.end_landing_id].point - self.point
+                } else {
+                    // self is end landing
+                    maze.landings[tunnel.start_landing_id].point - self.point
+                })
+                .into_inner();
+                (tunnel_id, towards_tunnel)
+            })
+            .collect();
+
+        let min_angle_between_tunnels = min_angle_between_tunnels();
+
+        for tunnel_pair in sorted_tunnels.windows(2) {
+            // a dot b = |a| |b| cos(theta) => theta = ...
+            let angle = f64::acos(
+                tunnel_pair[0].1.dot(&tunnel_pair[1].1)
+                    / (tunnel_pair[0].1.magnitude() * tunnel_pair[1].1.magnitude()),
+            );
+            assert!(angle > min_angle_between_tunnels);
+        }
+
+        // This is arbitrary, defined as the "zero angle" for the sake of comparison between tunnels
+        // We need the tunnels to be in order so that when we display them
+        // the entrances and walls don't criss-cross
+        let forwards = sorted_tunnels[0].1;
+        let right = self.up.cross(&forwards);
+        sorted_tunnels.sort_by(
+            |(_tunnel_id_1, towards_tunnel_1), (_tunnel_id_2, towards_tunnel_2)| {
+                f64::atan2(
+                    towards_tunnel_1.dot(&forwards),
+                    towards_tunnel_1.dot(&right),
+                )
+                .partial_cmp(&f64::atan2(
+                    towards_tunnel_2.dot(&forwards),
+                    towards_tunnel_2.dot(&right),
+                ))
+                .unwrap()
+                .reverse()
+            },
+        );
+
+        let floor_points: Vec<Point3<f64>> = sorted_tunnels
+            .into_iter()
+            .flat_map(|(tunnel_id, towards_tunnel)| {
                 let right = towards_tunnel.cross(&self.up);
                 let door_bottom_left =
                     floor_center + TUNNEL_WIDTH / 2.0 * right + LANDING_RADIUS * towards_tunnel;
@@ -100,10 +141,22 @@ impl Landing {
                 ));
                 [door_bottom_left, door_bottom_right]
             })
-            .chain(if self.tunnel_ids.len() >= 2 {
-                vec![]
-            } else {
-                vec![self.point - self.up.into_inner() * TUNNEL_HEIGHT / 2.0]
+            .collect();
+        // Fill in the spaces between the doors
+        let walls: Vec<_> = floor_points[1..]
+            .chunks_exact(2)
+            .chain([[
+                *floor_points.last().unwrap(),
+                *floor_points.first().unwrap(),
+            ]
+            .as_slice()])
+            .map(|floor_point_pair| {
+                Face::new(vec![
+                    floor_point_pair[0],
+                    floor_point_pair[1],
+                    floor_point_pair[1] + floor_to_ceiling,
+                    floor_point_pair[0] + floor_to_ceiling,
+                ])
             })
             .collect();
         let floor = Face::new(floor_points);
@@ -114,7 +167,8 @@ impl Landing {
                 .map(|point| point + floor_to_ceiling)
                 .collect(),
         );
-        let faces = vec![floor, ceiling];
+        let mut faces = vec![floor, ceiling];
+        faces.extend_from_slice(&walls);
 
         LandingEnvironment {
             faces,
@@ -379,7 +433,17 @@ impl Maze {
             point![0.0, 0.0, 20.0],
             Unit::new_normalize(vector![1.0, 1.0, 0.0]),
         );
+        let landing_3 = maze.add_landing(
+            point![-50.0, 0.0, -10.0],
+            Unit::new_normalize(vector![0.0, 1.0, 0.0]),
+        );
+        let landing_4 = maze.add_landing(
+            point![0.0, 0.0, -50.0],
+            Unit::new_normalize(vector![0.0, 1.0, 0.0]),
+        );
         maze.add_tunnel(landing_0, landing_1);
+        maze.add_tunnel(landing_0, landing_4);
+        maze.add_tunnel(landing_0, landing_3);
         maze.add_tunnel(landing_0, landing_2);
 
         Self {

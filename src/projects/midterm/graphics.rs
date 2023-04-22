@@ -157,6 +157,8 @@ impl GameState {
                 .unwrap();
                 dist < 0.1
             });
+            // Uncomment to disable collision detection
+            // let intersecting_face: Option<Face<f64>> = None;
             if let Some(_intersecting_face) = intersecting_face {
                 self.camera_velocity = Vector3::zeros();
             } else {
