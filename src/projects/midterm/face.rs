@@ -23,9 +23,13 @@ impl<T: Number> Face<T> {
             .into_iter()
             .map(|uv_pair| (uv_pair.point, uv_pair.uv))
             .unzip();
-        Self::new(points, uvs)
+        Self::new_with_uvs(points, uvs)
     }
-    pub(crate) fn new(points: Vec<Point3<T>>, uvs: Vec<Vector2<T>>) -> Self {
+    pub fn new(points: Vec<Point3<T>>) -> Self {
+        let uvs = points.iter().map(|_p| Vector2::<T>::zeros()).collect();
+        Self::new_with_uvs(points, uvs)
+    }
+    pub fn new_with_uvs(points: Vec<Point3<T>>, uvs: Vec<Vector2<T>>) -> Self {
         assert!(points.len() >= 3, "points must be 3 or more");
         assert_eq!(points.len(), uvs.len());
         let point_0 = points[0].coords;

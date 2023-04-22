@@ -91,20 +91,12 @@ impl Landing {
                     floor_center - TUNNEL_WIDTH / 2.0 * right + LANDING_RADIUS * towards_tunnel;
                 exit_faces.push((
                     EnvironmentIdentifier::Tunnel(tunnel_id),
-                    Face::new(
-                        vec![
-                            door_bottom_left,
-                            door_bottom_right,
-                            door_bottom_right + floor_to_ceiling,
-                            door_bottom_left + floor_to_ceiling,
-                        ],
-                        vec![
-                            Vector2::zeros(),
-                            Vector2::zeros(),
-                            Vector2::zeros(),
-                            Vector2::zeros(),
-                        ],
-                    ),
+                    Face::new(vec![
+                        door_bottom_left,
+                        door_bottom_right,
+                        door_bottom_right + floor_to_ceiling,
+                        door_bottom_left + floor_to_ceiling,
+                    ]),
                 ));
                 [door_bottom_left, door_bottom_right]
             })
@@ -114,18 +106,12 @@ impl Landing {
                 vec![self.point - self.up.into_inner() * TUNNEL_HEIGHT / 2.0]
             })
             .collect();
-        let floor_uvs = floor_points.iter().map(|_point| Vector2::zeros()).collect();
-        let floor = Face::new(floor_points, floor_uvs);
+        let floor = Face::new(floor_points);
         let ceiling = Face::new(
             floor
                 .points()
                 .iter()
                 .map(|point| point + floor_to_ceiling)
-                .collect(),
-            floor
-                .points()
-                .iter()
-                .map(|_point| Vector2::zeros())
                 .collect(),
         );
         let faces = vec![floor, ceiling];
@@ -296,34 +282,18 @@ impl Tunnel {
         let start_frame = frames.first().unwrap();
         let end_frame = frames.last().unwrap();
 
-        let start_face = Face::new(
-            vec![
-                start_frame.0.point,
-                start_frame.1.point,
-                start_frame.2.point,
-                start_frame.3.point,
-            ],
-            vec![
-                Vector2::zeros(),
-                Vector2::zeros(),
-                Vector2::zeros(),
-                Vector2::zeros(),
-            ],
-        );
-        let end_face = Face::new(
-            vec![
-                end_frame.0.point,
-                end_frame.1.point,
-                end_frame.2.point,
-                end_frame.3.point,
-            ],
-            vec![
-                Vector2::zeros(),
-                Vector2::zeros(),
-                Vector2::zeros(),
-                Vector2::zeros(),
-            ],
-        );
+        let start_face = Face::new(vec![
+            start_frame.0.point,
+            start_frame.1.point,
+            start_frame.2.point,
+            start_frame.3.point,
+        ]);
+        let end_face = Face::new(vec![
+            end_frame.0.point,
+            end_frame.1.point,
+            end_frame.2.point,
+            end_frame.3.point,
+        ]);
 
         let exit_faces = vec![
             (

@@ -39,8 +39,7 @@ pub(crate) fn load_obj(obj: &str) -> Vec<Face<f64>> {
                     vertices[vertex_id]
                 })
                 .collect();
-            let face_uvs = face_points.iter().map(|_point| Vector2::zeros()).collect();
-            let new_face = Face::new(face_points, face_uvs);
+            let new_face = Face::new(face_points);
             faces.push(new_face);
         } else {
             panic!("Unrecognized command on line {}: {}", line_num, command);
