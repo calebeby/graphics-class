@@ -1,10 +1,8 @@
-use nalgebra::{
-    point, vector, Matrix3, Matrix4, Point3, Unit, UnitVector3, Vector2, Vector3, Vector4,
-};
+use nalgebra::{point, vector, Matrix4, Point3, Unit, UnitVector3, Vector2, Vector3, Vector4};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use rand::Rng;
 use rand::{distributions::Uniform, SeedableRng};
+use rand::{Rng, RngCore};
 
 use crate::console_log;
 use crate::face::{Face, UVPair};
@@ -604,81 +602,96 @@ fn points_to_float32array(points: &[Vector3<f64>]) -> Vec<f32> {
         .collect()
 }
 
-fn rotate(axisangle: Vector3<f64>, vector: Vector3<f64>) -> Vector3<f64> {
-    let result = Matrix4::new_rotation(axisangle) * Vector4::new(vector.x, vector.y, vector.z, 0.0);
-    Vector3::new(result.x, result.y, result.z)
-}
-
 #[wasm_bindgen]
 impl Maze {
     pub fn generate() -> Self {
+        fn rotate(axisangle: Vector3<f64>, vector: &Vector3<f64>) -> Vector3<f64> {
+            let result =
+                Matrix4::new_rotation(axisangle) * Vector4::new(vector.x, vector.y, vector.z, 0.0);
+            Vector3::new(result.x, result.y, result.z)
+        }
+
         let mut rng = rand::thread_rng();
         // let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(1);
-        let tunnel_length_range = Uniform::new(MIN_TUNNEL_LENGTH, MAX_TUNNEL_LENGTH);
-        let tunnel_twist_range = Uniform::new(MIN_TWIST, MAX_TWIST);
-        let landing_rotation_range = Uniform::new(
-            min_angle_between_tunnels(),
-            2.0 * min_angle_between_tunnels(),
-        );
         let mut maze = MazeDescriptor {
             landings: vec![],
             tunnels: vec![],
             dead_ends: vec![],
         };
-        let mut space_claims = vec![];
+
+        // let mut space_claims = vec![];
+
+        /// Assuming a landing already has a tunnel coming into it,
+        /// generates tunnels going out of it (recursively)
+        fn extend_landing<Rng: RngCore>(
+            start_landing: ConnectorIdentifier,
+            input_direction: &UnitVector3<f64>,
+            angle: f64,
+            rng: &mut Rng,
+            maze: &mut MazeDescriptor,
+        ) {
+            let tunnel_length_range: Uniform<f64> =
+                Uniform::new(MIN_TUNNEL_LENGTH, MAX_TUNNEL_LENGTH);
+            let tunnel_twist_range: Uniform<f64> = Uniform::new(MIN_TWIST, MAX_TWIST);
+            let start_landing_id = match start_landing {
+                ConnectorIdentifier::Landing(id) => id,
+                _ => panic!(
+                    "extend_landing must be passed a Landing, received {:?}",
+                    start_landing
+                ),
+            };
+            let landing = &maze.landings[start_landing_id];
+
+            let dead_end_direction = rotate(*landing.up * angle, input_direction);
+            let dead_end_vec = dead_end_direction * rng.sample(tunnel_length_range);
+            let dead_end_point = landing.point + dead_end_vec;
+            let segment = parry3d::shape::Segment::new(landing.point, dead_end_point);
+            // space_claims.push(segment);
+            let dead_end = maze.add_dead_end(
+                dead_end_point,
+                Unit::new_normalize(rotate(
+                    dead_end_vec.normalize() * rng.sample(tunnel_twist_range),
+                    &landing.up,
+                )),
+            );
+            maze.add_tunnel(ConnectorIdentifier::Landing(start_landing_id), dead_end);
+        }
+
         let start_point = point![0.0, 0.0, 0.0];
         let start_up = Unit::new_normalize(vector![0.0, 1.0, 0.0]);
         let start_landing = maze.add_landing(start_point, start_up);
 
-        let input_direction = vector![1.0, 0.0, 0.0];
+        let input_direction = Unit::new_normalize(vector![1.0, 0.0, 0.0]);
 
-        let dead_end_point = start_point + input_direction * 5.0;
-        let segment = parry3d::shape::Segment::new(start_point, dead_end_point);
-        space_claims.push(segment);
-        let dead_end = maze.add_dead_end(dead_end_point, start_up);
-        maze.add_tunnel(start_landing, dead_end);
-
-        // make a landing
+        let landing_rotation_range: Uniform<f64> = Uniform::new(
+            min_angle_between_tunnels(),
+            2.0 * min_angle_between_tunnels(),
+        );
+        let angle_0 = 0.0;
         let angle_1 = rng.sample(landing_rotation_range);
         let angle_2 = angle_1 + rng.sample(landing_rotation_range);
 
-        let dead_end_1_direction = rotate(start_up.into_inner() * angle_1, input_direction);
-        let dead_end_1_vec = dead_end_1_direction * rng.sample(tunnel_length_range);
-        let dead_end_1_point = start_point + dead_end_1_vec;
-        let segment = parry3d::shape::Segment::new(start_point, dead_end_point);
-        space_claims.push(segment);
-        let dead_end_1 = maze.add_dead_end(
-            dead_end_1_point,
-            Unit::new_normalize(rotate(
-                dead_end_1_vec.normalize() * rng.sample(tunnel_twist_range),
-                start_up.into_inner(),
-            )),
+        extend_landing(
+            start_landing,
+            &input_direction,
+            angle_0,
+            &mut rng,
+            &mut maze,
         );
-        maze.add_tunnel(start_landing, dead_end_1);
-
-        let dead_end_1_direction = rotate(start_up.into_inner() * angle_2, input_direction);
-        let dead_end_1_vec = dead_end_1_direction * rng.sample(tunnel_length_range);
-        let dead_end_1_point = start_point + dead_end_1_vec;
-        let segment = parry3d::shape::Segment::new(start_point, dead_end_point);
-        space_claims.push(segment);
-        let dead_end_1 = maze.add_dead_end(
-            dead_end_1_point,
-            Unit::new_normalize(rotate(
-                dead_end_1_vec.normalize() * rng.sample(tunnel_twist_range),
-                start_up.into_inner(),
-            )),
+        extend_landing(
+            start_landing,
+            &input_direction,
+            angle_1,
+            &mut rng,
+            &mut maze,
         );
-        maze.add_tunnel(start_landing, dead_end_1);
-
-        // let dead_end_2 = maze.add_dead_end(
-        //     point![
-        //         -rng.sample(tunnel_length_range),
-        //         0.0,
-        //         rng.sample(tunnel_length_range)
-        //     ],
-        //     Unit::new_normalize(vector![0.0, 1.0, 0.0]),
-        // );
-        // maze.add_tunnel(start_landing, dead_end_2);
+        extend_landing(
+            start_landing,
+            &input_direction,
+            angle_2,
+            &mut rng,
+            &mut maze,
+        );
 
         Self {
             landings: maze
