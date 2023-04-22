@@ -14,7 +14,7 @@ mod ray;
 use face::Face;
 use maze::{Environment, EnvironmentIdentifier, Maze};
 use nalgebra::{
-    vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector2, Vector3,
+    vector, Matrix4, Point3, Scale3, Translation3, UnitQuaternion, UnitVector3, Vector3,
 };
 use wasm_bindgen::prelude::*;
 
@@ -137,15 +137,19 @@ impl GameState {
             )
             .unwrap();
             if crosses {
-                console_log!("Crossed into {:?}", new_environment);
                 Some(new_environment)
             } else {
                 None
             }
         });
         if let Some(&new_environment) = new_environment {
-            self.current_environment = new_environment;
-            self.camera_position = new_camera_position;
+            if matches!(new_environment, EnvironmentIdentifier::DeadEnd(_)) {
+                // Since a dead end is not a space you can be "in", we are ignoring this
+            } else {
+                console_log!("Crossed into {:?}", new_environment);
+                self.current_environment = new_environment;
+                self.camera_position = new_camera_position;
+            }
         } else {
             let intersecting_face = self.environment().faces().iter().find(|face| {
                 let dist = parry3d::query::distance(
@@ -195,6 +199,7 @@ impl GameState {
         match self.current_environment {
             EnvironmentIdentifier::Tunnel(id) => &self.maze.tunnels()[id],
             EnvironmentIdentifier::Landing(id) => &self.maze.landings()[id],
+            EnvironmentIdentifier::DeadEnd(id) => &self.maze.dead_ends()[id],
         }
     }
 

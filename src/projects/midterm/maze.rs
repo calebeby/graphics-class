@@ -1,7 +1,10 @@
 use nalgebra::{point, vector, Point3, Unit, UnitVector3, Vector2, Vector3};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::face::{Face, UVPair};
+use crate::{
+    console_log,
+    face::{Face, UVPair},
+};
 
 const TUNNEL_WIDTH: f64 = 3.0;
 const TUNNEL_HEIGHT: f64 = 4.0;
@@ -12,12 +15,76 @@ fn min_angle_between_tunnels() -> f64 {
     2.0 * f64::atan((TUNNEL_WIDTH / 2.0) / LANDING_RADIUS)
 }
 
+struct Door {
+    top_left: Point3<f64>,
+    bottom_left: Point3<f64>,
+    top_right: Point3<f64>,
+    bottom_right: Point3<f64>,
+}
+impl Door {
+    fn to_face(&self) -> Face<f64> {
+        Face::new(vec![
+            self.bottom_left,
+            self.bottom_right,
+            self.top_right,
+            self.top_left,
+        ])
+    }
+}
+fn make_door(point: &Point3<f64>, up: &UnitVector3<f64>, forwards: &UnitVector3<f64>) -> Door {
+    let up = up.into_inner();
+    let right = forwards.cross(&up);
+    let top_right = point + up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+    let bottom_right = point - up * TUNNEL_HEIGHT / 2.0 + right * TUNNEL_WIDTH / 2.0;
+    let bottom_left = point - up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+    let top_left = point + up * TUNNEL_HEIGHT / 2.0 - right * TUNNEL_WIDTH / 2.0;
+    Door {
+        top_left,
+        top_right,
+        bottom_left,
+        bottom_right,
+    }
+}
+
 /// The kinds of thing you can be "in" - like a room.
 /// The usize represents the corresponding id.
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum EnvironmentIdentifier {
     Tunnel(usize),
     Landing(usize),
+    DeadEnd(usize),
+}
+
+/// The usize represents the corresponding id.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) enum ConnectorIdentifier {
+    Landing(usize),
+    DeadEnd(usize),
+}
+
+impl ConnectorIdentifier {
+    fn environment_identifier(&self) -> EnvironmentIdentifier {
+        match self {
+            ConnectorIdentifier::Landing(id) => EnvironmentIdentifier::Landing(*id),
+            ConnectorIdentifier::DeadEnd(id) => EnvironmentIdentifier::DeadEnd(*id),
+        }
+    }
+}
+
+struct Coupler {
+    point: Point3<f64>,
+    up: UnitVector3<f64>,
+}
+
+/// The kinds of things that can be attached to the ends of tunnels
+trait Connector {
+    fn point(&self) -> Point3<f64>;
+    /// Where the tunnel should attach to
+    /// (not necessarily `point()` which is the center of the object)
+    /// other_tunnel_end is the `point()` of the other end of the tunnel
+    /// (to be clear, *not* the coupling_point() of the other end of the tunnel)
+    fn coupler(&self, _other_tunnel_end: &Point3<f64>) -> Coupler;
+    fn add_tunnel(&mut self, tunnel_id: usize);
 }
 
 pub(crate) trait Environment {
@@ -72,35 +139,24 @@ impl Landing {
         assert!(self.tunnel_ids.len() >= 2);
         let mut exit_faces: Vec<(EnvironmentIdentifier, Face<f64>)> = vec![];
 
-        let floor_center = self.point - self.up.into_inner() * TUNNEL_HEIGHT / 2.0;
         let floor_to_ceiling = self.up.into_inner() * TUNNEL_HEIGHT;
         let mut sorted_tunnels: Vec<_> = self
             .tunnel_ids
             .iter()
             .map(|&tunnel_id| {
                 let tunnel = &maze.tunnels[tunnel_id];
-                let towards_tunnel = Unit::new_normalize(if self.id == tunnel.start_landing_id {
-                    // self is start landing
-                    maze.landings[tunnel.end_landing_id].point - self.point
-                } else {
-                    // self is end landing
-                    maze.landings[tunnel.start_landing_id].point - self.point
-                })
-                .into_inner();
+                let towards_tunnel = Unit::new_normalize(
+                    if ConnectorIdentifier::Landing(self.id) == tunnel.start_connector {
+                        // self is start landing
+                        maze.get_connector(tunnel.end_connector).point() - self.point
+                    } else {
+                        // self is end landing
+                        maze.get_connector(tunnel.start_connector).point() - self.point
+                    },
+                );
                 (tunnel_id, towards_tunnel)
             })
             .collect();
-
-        let min_angle_between_tunnels = min_angle_between_tunnels();
-
-        for tunnel_pair in sorted_tunnels.windows(2) {
-            // a dot b = |a| |b| cos(theta) => theta = ...
-            let angle = f64::acos(
-                tunnel_pair[0].1.dot(&tunnel_pair[1].1)
-                    / (tunnel_pair[0].1.magnitude() * tunnel_pair[1].1.magnitude()),
-            );
-            assert!(angle > min_angle_between_tunnels);
-        }
 
         // This is arbitrary, defined as the "zero angle" for the sake of comparison between tunnels
         // We need the tunnels to be in order so that when we display them
@@ -118,28 +174,29 @@ impl Landing {
                     towards_tunnel_2.dot(&right),
                 ))
                 .unwrap()
-                .reverse()
             },
         );
+        let min_angle_between_tunnels = min_angle_between_tunnels();
+
+        for tunnel_pair in sorted_tunnels.windows(2) {
+            // a dot b = |a| |b| cos(theta) => theta = ...
+            let angle = f64::acos(
+                tunnel_pair[0].1.dot(&tunnel_pair[1].1)
+                    / (tunnel_pair[0].1.magnitude() * tunnel_pair[1].1.magnitude()),
+            );
+            assert!(angle > min_angle_between_tunnels);
+        }
 
         let floor_points: Vec<Point3<f64>> = sorted_tunnels
             .into_iter()
             .flat_map(|(tunnel_id, towards_tunnel)| {
-                let right = towards_tunnel.cross(&self.up);
-                let door_bottom_left =
-                    floor_center + TUNNEL_WIDTH / 2.0 * right + LANDING_RADIUS * towards_tunnel;
-                let door_bottom_right =
-                    floor_center - TUNNEL_WIDTH / 2.0 * right + LANDING_RADIUS * towards_tunnel;
-                exit_faces.push((
-                    EnvironmentIdentifier::Tunnel(tunnel_id),
-                    Face::new(vec![
-                        door_bottom_left,
-                        door_bottom_right,
-                        door_bottom_right + floor_to_ceiling,
-                        door_bottom_left + floor_to_ceiling,
-                    ]),
-                ));
-                [door_bottom_left, door_bottom_right]
+                let door = make_door(
+                    &(self.point + towards_tunnel.into_inner() * LANDING_RADIUS),
+                    &self.up,
+                    &towards_tunnel,
+                );
+                exit_faces.push((EnvironmentIdentifier::Tunnel(tunnel_id), door.to_face()));
+                [door.bottom_left, door.bottom_right]
             })
             .collect();
         // Fill in the spaces between the doors
@@ -178,16 +235,29 @@ impl Landing {
     }
 }
 
+impl Connector for Landing {
+    fn point(&self) -> Point3<f64> {
+        self.point
+    }
+    fn coupler(&self, other_tunnel_end: &Point3<f64>) -> Coupler {
+        let tunnel_dir = (other_tunnel_end - self.point).normalize();
+        let coupler_point = self.point + (tunnel_dir * LANDING_RADIUS);
+        Coupler {
+            point: coupler_point,
+            up: self.up,
+        }
+    }
+    fn add_tunnel(&mut self, tunnel_id: usize) {
+        self.tunnel_ids.push(tunnel_id);
+    }
+}
+
 pub(crate) struct TunnelEnvironment {
     faces: Vec<Face<f64>>,
-    start_face: Face<f64>,
-    end_face: Face<f64>,
     tunnel: Tunnel,
     exit_faces: Vec<(EnvironmentIdentifier, Face<f64>)>,
-    start_point: Point3<f64>,
-    end_point: Point3<f64>,
-    start_up: UnitVector3<f64>,
-    end_up: UnitVector3<f64>,
+    start_coupler: Coupler,
+    end_coupler: Coupler,
 }
 
 impl TunnelEnvironment {
@@ -203,35 +273,35 @@ impl Environment for TunnelEnvironment {
         &self.exit_faces
     }
     fn up(&self, camera_position: Point3<f64>) -> UnitVector3<f64> {
-        let start_to_camera = camera_position - self.start_point;
-        let tunnel_length_vector = self.end_point - self.start_point;
+        let start_to_camera = camera_position - self.start_coupler.point;
+        let tunnel_length_vector = self.end_coupler.point - self.start_coupler.point;
         let percent =
             start_to_camera.dot(&tunnel_length_vector) / tunnel_length_vector.magnitude_squared();
-        self.start_up.slerp(&self.end_up, percent)
+        self.start_coupler.up.slerp(&self.end_coupler.up, percent)
     }
 }
 
 #[derive(Clone)]
 pub(crate) struct Tunnel {
-    start_landing_id: usize,
-    end_landing_id: usize,
+    start_connector: ConnectorIdentifier,
+    end_connector: ConnectorIdentifier,
 }
 
 impl Tunnel {
     fn to_environment(&self, maze: &MazeDescriptor) -> TunnelEnvironment {
-        let start_landing = &maze.landings[self.start_landing_id];
-        let end_landing = &maze.landings[self.end_landing_id];
-        let tunnel_vec = end_landing.point.coords - start_landing.point.coords;
+        let start_connector = &maze.get_connector(self.start_connector);
+        let end_connector = &maze.get_connector(self.end_connector);
+        let tunnel_vec = end_connector.point().coords - start_connector.point().coords;
+        let start_coupler = start_connector.coupler(&end_connector.point());
+        let end_coupler = end_connector.coupler(&start_connector.point());
         // Dot products should be zero,
         // showing that the "direction" of the tunnel should be perpendicular
         // to the "up"s of the start and end landings
-        assert!(start_landing.up.dot(&tunnel_vec) < f64::EPSILON);
-        assert!(end_landing.up.dot(&tunnel_vec) < f64::EPSILON);
+        assert!(start_coupler.up.dot(&tunnel_vec) < f64::EPSILON);
+        assert!(end_coupler.up.dot(&tunnel_vec) < f64::EPSILON);
 
-        let tunnel_dir = Unit::new_normalize(tunnel_vec);
-        let start_point = start_landing.point + (tunnel_dir.into_inner() * LANDING_RADIUS);
-        let end_point = end_landing.point - (tunnel_dir.into_inner() * LANDING_RADIUS);
-        let inner_tunnel_vec = end_point - start_point;
+        let inner_tunnel_vec = end_coupler.point - start_coupler.point;
+        let tunnel_dir = (end_connector.point() - start_connector.point()).normalize();
 
         type P = UVPair<f64>;
 
@@ -241,12 +311,12 @@ impl Tunnel {
         let frames: Vec<(P, P, P, P, P)> = (0..=TUNNEL_SUBDIVISIONS)
             .map(|subdivision_i| {
                 let percent = (subdivision_i as f64) / (TUNNEL_SUBDIVISIONS as f64);
-                let up = start_landing
+                let up = start_coupler
                     .up
-                    .slerp(&end_landing.up, percent)
+                    .slerp(&end_coupler.up, percent)
                     .into_inner();
                 let right = -up.cross(&tunnel_dir);
-                let frame_center = Point3::from(percent * inner_tunnel_vec + start_point.coords);
+                let frame_center = start_coupler.point + percent * inner_tunnel_vec;
                 const UV_SCALE: f64 = 0.2;
                 let uv_x = percent * UV_SCALE * inner_tunnel_vec.magnitude();
                 let top_right = UVPair {
@@ -350,27 +420,98 @@ impl Tunnel {
         ]);
 
         let exit_faces = vec![
-            (
-                EnvironmentIdentifier::Landing(self.start_landing_id),
-                start_face.clone(),
-            ),
-            (
-                EnvironmentIdentifier::Landing(self.end_landing_id),
-                end_face.clone(),
-            ),
+            (self.start_connector.environment_identifier(), start_face),
+            (self.end_connector.environment_identifier(), end_face),
         ];
 
         TunnelEnvironment {
             faces,
-            start_face,
-            end_face,
             tunnel: self.clone(),
             exit_faces,
-            start_point,
-            end_point,
-            start_up: start_landing.up,
-            end_up: end_landing.up,
+            start_coupler,
+            end_coupler,
         }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct DeadEnd {
+    pub(crate) id: usize,
+    pub(crate) up: UnitVector3<f64>,
+    pub(crate) point: Point3<f64>,
+    tunnel_id: Option<usize>,
+}
+
+impl Connector for DeadEnd {
+    fn point(&self) -> Point3<f64> {
+        self.point
+    }
+    fn coupler(&self, _other_tunnel_end: &Point3<f64>) -> Coupler {
+        Coupler {
+            point: self.point,
+            up: self.up,
+        }
+    }
+    fn add_tunnel(&mut self, tunnel_id: usize) {
+        assert!(self.tunnel_id.is_none());
+        self.tunnel_id = Some(tunnel_id);
+    }
+}
+
+impl DeadEnd {
+    fn new(id: usize, point: Point3<f64>, up: UnitVector3<f64>) -> Self {
+        Self {
+            id,
+            point,
+            up,
+            tunnel_id: None,
+        }
+    }
+    fn to_environment(&self, maze: &MazeDescriptor) -> DeadEndEnvironment {
+        assert!(self.tunnel_id.is_some());
+        let tunnel_id = self.tunnel_id.unwrap();
+        let tunnel = &maze.tunnels[tunnel_id];
+        let door = make_door(
+            &self.point,
+            &self.up,
+            &Unit::new_normalize(
+                if tunnel.start_connector == ConnectorIdentifier::DeadEnd(self.id) {
+                    maze.get_connector(tunnel.end_connector).point()
+                        - maze.get_connector(tunnel.start_connector).point()
+                } else {
+                    maze.get_connector(tunnel.start_connector).point()
+                        - maze.get_connector(tunnel.end_connector).point()
+                },
+            ),
+        );
+        DeadEndEnvironment {
+            faces: vec![door.to_face()],
+            exit_faces: vec![(EnvironmentIdentifier::Tunnel(tunnel_id), door.to_face())],
+            dead_end: self.clone(),
+        }
+    }
+}
+
+pub(crate) struct DeadEndEnvironment {
+    faces: Vec<Face<f64>>,
+    exit_faces: Vec<(EnvironmentIdentifier, Face<f64>)>,
+    dead_end: DeadEnd,
+}
+
+impl DeadEndEnvironment {
+    pub(crate) fn dead_end(&self) -> &DeadEnd {
+        &self.dead_end
+    }
+}
+impl Environment for DeadEndEnvironment {
+    fn faces(&self) -> &[Face<f64>] {
+        &self.faces
+    }
+    fn exit_faces(&self) -> &[(EnvironmentIdentifier, Face<f64>)] {
+        &self.exit_faces
+    }
+    fn up(&self, _camera_position: Point3<f64>) -> UnitVector3<f64> {
+        self.dead_end.up
     }
 }
 
@@ -378,6 +519,7 @@ impl Tunnel {
 /// This is in contrast with the Maze struct, which is much higher-fidelity and includes faces.
 struct MazeDescriptor {
     landings: Vec<Landing>,
+    dead_ends: Vec<DeadEnd>,
     tunnels: Vec<Tunnel>,
 }
 impl MazeDescriptor {
@@ -387,17 +529,44 @@ impl MazeDescriptor {
         self.landings.push(landing);
         id
     }
-    fn add_tunnel(&mut self, start_landing_id: usize, end_landing_id: usize) -> usize {
+    fn add_dead_end(&mut self, location: Point3<f64>, up: UnitVector3<f64>) -> usize {
+        let id = self.dead_ends.len();
+        let dead_end = DeadEnd::new(id, location, up);
+        self.dead_ends.push(dead_end);
+        id
+    }
+    fn add_tunnel(
+        &mut self,
+        start_connector: ConnectorIdentifier,
+        end_connector: ConnectorIdentifier,
+    ) -> usize {
         let new_tunnel_id = self.tunnels.len();
         self.tunnels.push(Tunnel {
-            start_landing_id,
-            end_landing_id,
+            start_connector,
+            end_connector,
         });
-        self.landings[start_landing_id]
-            .tunnel_ids
-            .push(new_tunnel_id);
-        self.landings[end_landing_id].tunnel_ids.push(new_tunnel_id);
+        self.get_connector_mut(start_connector)
+            .add_tunnel(new_tunnel_id);
+        self.get_connector_mut(end_connector)
+            .add_tunnel(new_tunnel_id);
         new_tunnel_id
+    }
+    #[inline]
+    fn get_connector(&self, connector_identifier: ConnectorIdentifier) -> &dyn Connector {
+        match connector_identifier {
+            ConnectorIdentifier::Landing(id) => &self.landings[id],
+            ConnectorIdentifier::DeadEnd(id) => &self.dead_ends[id],
+        }
+    }
+    #[inline]
+    fn get_connector_mut(
+        &mut self,
+        connector_identifier: ConnectorIdentifier,
+    ) -> &mut dyn Connector {
+        match connector_identifier {
+            ConnectorIdentifier::Landing(id) => &mut self.landings[id],
+            ConnectorIdentifier::DeadEnd(id) => &mut self.dead_ends[id],
+        }
     }
 }
 
@@ -405,6 +574,7 @@ impl MazeDescriptor {
 pub struct Maze {
     landings: Vec<LandingEnvironment>,
     tunnels: Vec<TunnelEnvironment>,
+    dead_ends: Vec<DeadEndEnvironment>,
 }
 
 fn points_to_float32array(points: &[Vector3<f64>]) -> Vec<f32> {
@@ -420,31 +590,32 @@ impl Maze {
         let mut maze = MazeDescriptor {
             landings: vec![],
             tunnels: vec![],
+            dead_ends: vec![],
         };
-        let landing_0 = maze.add_landing(
+        let landing_0 = ConnectorIdentifier::Landing(maze.add_landing(
             point![0.0, 0.0, 0.0],
             Unit::new_normalize(vector![0.0, 1.0, 0.0]),
-        );
-        let landing_1 = maze.add_landing(
+        ));
+        let dead_end_1 = ConnectorIdentifier::DeadEnd(maze.add_dead_end(
             point![20.0, 0.0, 0.0],
             Unit::new_normalize(vector![0.0, 1.0, 1.0]),
-        );
-        let landing_2 = maze.add_landing(
-            point![0.0, 0.0, 20.0],
-            Unit::new_normalize(vector![1.0, 1.0, 0.0]),
-        );
-        let landing_3 = maze.add_landing(
+        ));
+        // let dead_end_2 = ConnectorIdentifier::DeadEnd(maze.add_dead_end(
+        //     point![0.0, 0.0, 20.0],
+        //     Unit::new_normalize(vector![1.0, 1.0, 0.0]),
+        // ));
+        let dead_end_3 = ConnectorIdentifier::DeadEnd(maze.add_dead_end(
             point![-50.0, 0.0, -10.0],
             Unit::new_normalize(vector![0.0, 1.0, 0.0]),
-        );
-        let landing_4 = maze.add_landing(
+        ));
+        let dead_end_4 = ConnectorIdentifier::DeadEnd(maze.add_dead_end(
             point![0.0, 0.0, -50.0],
             Unit::new_normalize(vector![0.0, 1.0, 0.0]),
-        );
-        maze.add_tunnel(landing_0, landing_1);
-        maze.add_tunnel(landing_0, landing_4);
-        maze.add_tunnel(landing_0, landing_3);
-        maze.add_tunnel(landing_0, landing_2);
+        ));
+        maze.add_tunnel(landing_0, dead_end_1);
+        maze.add_tunnel(landing_0, dead_end_4);
+        maze.add_tunnel(landing_0, dead_end_3);
+        // maze.add_tunnel(landing_0, dead_end_2);
 
         Self {
             landings: maze
@@ -457,6 +628,11 @@ impl Maze {
                 .iter()
                 .map(|tunnel| tunnel.to_environment(&maze))
                 .collect(),
+            dead_ends: maze
+                .dead_ends
+                .iter()
+                .map(|dead_end| dead_end.to_environment(&maze))
+                .collect(),
         }
     }
     #[inline]
@@ -466,6 +642,10 @@ impl Maze {
     #[inline]
     pub(crate) fn landings(&self) -> &[LandingEnvironment] {
         &self.landings
+    }
+    #[inline]
+    pub(crate) fn dead_ends(&self) -> &[DeadEndEnvironment] {
+        &self.dead_ends
     }
     #[wasm_bindgen]
     pub fn points_to_float32array(&self) -> Vec<f32> {
@@ -517,6 +697,7 @@ impl Maze {
             .iter()
             .flat_map(|tunnel| tunnel.faces())
             .chain(self.landings.iter().flat_map(|landing| landing.faces()))
+            .chain(self.dead_ends.iter().flat_map(|dead_end| dead_end.faces()))
             .cloned()
             .collect()
     }
