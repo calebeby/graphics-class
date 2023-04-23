@@ -89,9 +89,18 @@ impl TransformMatrix {
 #[wasm_bindgen]
 impl GameState {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
+    pub fn new(rng_seed: u32) -> Self {
         console_error_panic_hook::set_once();
-        Default::default()
+        let maze = Maze::generate(rng_seed);
+        let starting_landing = maze.landings()[0].landing();
+        Self {
+            aspect_ratio: 1.0,
+            camera_position: starting_landing.point,
+            camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, -1.0]),
+            camera_velocity: Vector3::zeros(),
+            current_environment: EnvironmentIdentifier::Landing(starting_landing.id),
+            maze,
+        }
     }
 
     fn up(&self) -> UnitVector3<f64> {
@@ -255,22 +264,6 @@ impl GameState {
     #[wasm_bindgen]
     pub fn uvs_to_float32array(&self) -> Vec<f32> {
         self.maze.uvs_to_float32array()
-    }
-}
-
-impl Default for GameState {
-    #[inline]
-    fn default() -> Self {
-        let maze = Maze::generate();
-        let starting_landing = maze.landings()[0].landing();
-        Self {
-            aspect_ratio: 1.0,
-            camera_position: starting_landing.point,
-            camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, -1.0]),
-            camera_velocity: Vector3::zeros(),
-            current_environment: EnvironmentIdentifier::Landing(starting_landing.id),
-            maze,
-        }
     }
 }
 

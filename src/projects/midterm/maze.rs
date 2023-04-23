@@ -15,14 +15,10 @@ const MIN_TUNNEL_LENGTH: f64 = 20.0;
 const MAX_TUNNEL_LENGTH: f64 = 60.0;
 const MIN_TWIST: f64 = -120.0;
 const MAX_TWIST: f64 = 120.0;
-const MAX_TRIES: usize = 100;
+const TARGET_LANDING_COUNT: usize = 1000;
 
 fn min_angle_between_tunnels() -> f64 {
     2.0 * f64::atan((TUNNEL_WIDTH / 2.0) / LANDING_RADIUS)
-}
-
-fn max_tunnel_nearness() -> f64 {
-    (TUNNEL_WIDTH + TUNNEL_HEIGHT).sqrt()
 }
 
 struct Door {
@@ -150,7 +146,8 @@ impl Landing {
         let mut exit_faces: Vec<(EnvironmentIdentifier, Face<f64>)> = vec![];
 
         let floor_to_ceiling = self.up.into_inner() * TUNNEL_HEIGHT;
-        let mut sorted_tunnels: Vec<_> = self
+
+        let tunnels: Vec<_> = self
             .tunnel_ids
             .iter()
             .map(|&tunnel_id| {
@@ -171,35 +168,53 @@ impl Landing {
         // This is arbitrary, defined as the "zero angle" for the sake of comparison between tunnels
         // We need the tunnels to be in order so that when we display them
         // the entrances and walls don't criss-cross
-        let forwards = sorted_tunnels[0].1;
+        let forwards = tunnels[0].1;
         let right = self.up.cross(&forwards);
+        let mut sorted_tunnels: Vec<_> = tunnels
+            .into_iter()
+            .map(|(tunnel_id, towards_tunnel)| {
+                let angle = f64::atan2(towards_tunnel.dot(&forwards), towards_tunnel.dot(&right));
+                (tunnel_id, towards_tunnel, angle)
+            })
+            .collect();
+
         sorted_tunnels.sort_by(
-            |(_tunnel_id_1, towards_tunnel_1), (_tunnel_id_2, towards_tunnel_2)| {
-                f64::atan2(
-                    towards_tunnel_1.dot(&forwards),
-                    towards_tunnel_1.dot(&right),
-                )
-                .partial_cmp(&f64::atan2(
-                    towards_tunnel_2.dot(&forwards),
-                    towards_tunnel_2.dot(&right),
-                ))
-                .unwrap()
+            |(_tunnel_id_1, _towards_tunnel_1, angle_1),
+             (_tunnel_id_2, _towards_tunnel_2, angle_2)| {
+                angle_1.partial_cmp(angle_2).unwrap()
             },
         );
         let min_angle_between_tunnels = min_angle_between_tunnels();
 
-        for tunnel_pair in sorted_tunnels.windows(2) {
-            // a dot b = |a| |b| cos(theta) => theta = ...
-            let angle = f64::acos(
-                tunnel_pair[0].1.dot(&tunnel_pair[1].1)
-                    / (tunnel_pair[0].1.magnitude() * tunnel_pair[1].1.magnitude()),
+        for (first_tunnel_angle, second_tunnel_angle) in sorted_tunnels
+            .windows(2)
+            .map(|tunnel_pair| (tunnel_pair[0].2, tunnel_pair[1].2))
+            .chain([(
+                sorted_tunnels.last().unwrap().2,
+                sorted_tunnels.first().unwrap().2,
+            )])
+        {
+            // There are two ways to measure the angles between radii of a circle:
+            // clockwise and counterclockwise. We find the smaller of the two
+            let angle_between = (second_tunnel_angle - first_tunnel_angle)
+                .abs()
+                .min(2.0 * std::f64::consts::PI - (second_tunnel_angle - first_tunnel_angle).abs());
+            assert!(
+                angle_between > min_angle_between_tunnels,
+                "Angle between tunnels too small: {}, (min: {})\n\
+                 Angles: {:#?}",
+                angle_between,
+                min_angle_between_tunnels,
+                sorted_tunnels
+                    .iter()
+                    .map(|(_id, _towards, angle)| *angle)
+                    .collect::<Vec<f64>>()
             );
-            assert!(angle > min_angle_between_tunnels);
         }
 
         let floor_points: Vec<Point3<f64>> = sorted_tunnels
             .into_iter()
-            .flat_map(|(tunnel_id, towards_tunnel)| {
+            .flat_map(|(tunnel_id, towards_tunnel, _angle)| {
                 let door = make_door(
                     &(self.point + towards_tunnel.into_inner() * LANDING_RADIUS),
                     &self.up,
@@ -604,22 +619,29 @@ fn points_to_float32array(points: &[Vector3<f64>]) -> Vec<f32> {
 
 #[wasm_bindgen]
 impl Maze {
-    pub fn generate() -> Self {
+    pub fn generate(rng_seed: u32) -> Self {
         fn rotate(axisangle: Vector3<f64>, vector: &Vector3<f64>) -> Vector3<f64> {
             let result =
                 Matrix4::new_rotation(axisangle) * Vector4::new(vector.x, vector.y, vector.z, 0.0);
             Vector3::new(result.x, result.y, result.z)
         }
 
-        let mut rng = rand::thread_rng();
-        // let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(1);
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(rng_seed as u64);
         let mut maze = MazeDescriptor {
             landings: vec![],
             tunnels: vec![],
             dead_ends: vec![],
         };
 
-        // let mut space_claims = vec![];
+        fn get_landing_tunnel_angles<Rng: RngCore>(rng: &mut Rng) -> Vec<f64> {
+            let landing_rotation_range: Uniform<f64> = Uniform::new(
+                min_angle_between_tunnels(),
+                1.5 * min_angle_between_tunnels(),
+            );
+            let angle_1 = rng.sample(landing_rotation_range);
+            let angle_2 = angle_1 + rng.sample(landing_rotation_range);
+            vec![angle_1, angle_2]
+        }
 
         /// Assuming a landing already has a tunnel coming into it,
         /// generates tunnels going out of it (recursively)
@@ -649,9 +671,11 @@ impl Maze {
                 connector_vec.normalize() * rng.sample(tunnel_twist_range),
                 &landing.up,
             ));
-            let segment = parry3d::shape::Segment::new(landing.point, connector_point);
-            let make_dead_end = rng.gen_bool(0.5);
-            console_log!("make dead end {}", make_dead_end);
+            let make_dead_end = rng.gen_bool(if maze.landings.len() > TARGET_LANDING_COUNT {
+                0.9
+            } else {
+                0.1
+            });
             if make_dead_end {
                 let dead_end = maze.add_dead_end(connector_point, connector_up);
                 maze.add_tunnel(ConnectorIdentifier::Landing(start_landing_id), dead_end);
@@ -662,26 +686,10 @@ impl Maze {
                     ConnectorIdentifier::Landing(start_landing_id),
                     new_landing_id,
                 );
-                let landing_rotation_range: Uniform<f64> = Uniform::new(
-                    min_angle_between_tunnels(),
-                    1.5 * min_angle_between_tunnels(),
-                );
-                let angle_1 = rng.sample(landing_rotation_range);
-                let angle_2 = angle_1 + rng.sample(landing_rotation_range);
-                extend_landing(
-                    new_landing_id,
-                    &Unit::new_normalize(-connector_direction),
-                    angle_1,
-                    rng,
-                    maze,
-                );
-                extend_landing(
-                    new_landing_id,
-                    &Unit::new_normalize(-connector_direction),
-                    angle_2,
-                    rng,
-                    maze,
-                );
+                let new_input_direction = Unit::new_normalize(-connector_direction);
+                for angle in get_landing_tunnel_angles(rng) {
+                    extend_landing(new_landing_id, &new_input_direction, angle, rng, maze);
+                }
             }
         }
 
@@ -691,35 +699,16 @@ impl Maze {
 
         let input_direction = Unit::new_normalize(vector![1.0, 0.0, 0.0]);
 
-        let landing_rotation_range: Uniform<f64> = Uniform::new(
-            min_angle_between_tunnels(),
-            2.0 * min_angle_between_tunnels(),
-        );
-        let angle_0 = 0.0;
-        let angle_1 = rng.sample(landing_rotation_range);
-        let angle_2 = angle_1 + rng.sample(landing_rotation_range);
+        extend_landing(start_landing, &input_direction, 0.0, &mut rng, &mut maze);
 
-        extend_landing(
-            start_landing,
-            &input_direction,
-            angle_0,
-            &mut rng,
-            &mut maze,
-        );
-        extend_landing(
-            start_landing,
-            &input_direction,
-            angle_1,
-            &mut rng,
-            &mut maze,
-        );
-        extend_landing(
-            start_landing,
-            &input_direction,
-            angle_2,
-            &mut rng,
-            &mut maze,
-        );
+        for angle in get_landing_tunnel_angles(&mut rng) {
+            extend_landing(start_landing, &input_direction, angle, &mut rng, &mut maze);
+        }
+
+        console_log!("random seed: {}", rng_seed);
+        console_log!("tunnels: {}", maze.tunnels.len());
+        console_log!("landings: {}", maze.landings.len());
+        console_log!("dead ends: {}", maze.dead_ends.len());
 
         Self {
             landings: maze
@@ -804,5 +793,18 @@ impl Maze {
             .chain(self.dead_ends.iter().flat_map(|dead_end| dead_end.faces()))
             .cloned()
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generation() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..100 {
+            Maze::generate(rng.next_u32());
+        }
     }
 }

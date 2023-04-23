@@ -17,3 +17,4 @@ getrandom = { version = "0.2.6", features = ["js"] }
 parry2d-f64 = "0.13.4"
 parry3d-f64 = "0.13.4"
 console_error_panic_hook = "0.1.7"
+
