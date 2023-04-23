@@ -5,8 +5,6 @@ import * as rust from "./pkg";
 // This improves HMR for changes to rust file for some reason
 import "./pkg/midterm_bg.wasm?url";
 
-const rust_module = await rust.default();
-
 export interface GameObject {
   transform_matrix: rust.TransformMatrix;
   vertex_coords: Float32Array;
@@ -48,8 +46,14 @@ export const Midterm = ({}: Props) => {
   const [random_seed, set_random_seed] = useState<number>(
     () => get_seed_from_url() || get_random_seed(),
   );
+  const [rust_module, set_rust_module] = useState<rust.InitOutput | null>(null);
 
   useEffect(() => {
+    rust.default().then((mod) => set_rust_module(mod));
+  }, []);
+
+  useEffect(() => {
+    if (!rust_module) return;
     const canvas = canvas_ref.current!;
     const rust_state = new rust.GameState(random_seed);
     const game_state: GameState = {
