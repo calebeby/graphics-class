@@ -49,6 +49,16 @@ export const Midterm = ({}: Props) => {
   const [rust_module, set_rust_module] = useState<rust.InitOutput | null>(null);
 
   useEffect(() => {
+    const popstate_listener = () => {
+      console.log("popstate");
+      let seed = get_seed_from_url();
+      if (seed !== undefined) set_random_seed(seed);
+    };
+    window.addEventListener("popstate", popstate_listener);
+    return () => window.removeEventListener("popstate", popstate_listener);
+  }, []);
+
+  useEffect(() => {
     rust.default().then((mod) => set_rust_module(mod));
   }, []);
 
@@ -86,8 +96,10 @@ export const Midterm = ({}: Props) => {
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    url.searchParams.set("seed", String(random_seed));
-    window.history.pushState({}, "", url);
+    if (url.searchParams.get("seed") !== String(random_seed)) {
+      url.searchParams.set("seed", String(random_seed));
+      window.history.pushState({}, "", url);
+    }
   }, [random_seed]);
 
   return (

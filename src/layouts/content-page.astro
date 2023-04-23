@@ -16,7 +16,9 @@ import "../content-page.css";
 
 <style>
   .page-content {
-    margin: 5em auto;
+    display: grid;
+    grid-template-columns: 1fr minmax(40em, calc(100vw - 2em)) 1fr;
+    margin: 5em 0;
     width: 40em;
     max-width: calc(100vw - 2em);
     display: flex;
