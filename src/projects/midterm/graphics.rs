@@ -156,8 +156,15 @@ impl GameState {
             }
         });
         if let Some(&new_environment) = new_environment {
-            if matches!(new_environment, EnvironmentIdentifier::DeadEnd(_)) {
+            if let EnvironmentIdentifier::DeadEnd(id) = new_environment {
                 // Since a dead end is not a space you can be "in", we are ignoring this
+                // _unless_ it is the maze exit
+                // in that case we allow you to pass into it
+                if self.maze.dead_ends()[id].dead_end().is_exit {
+                    console_log!("Crossed into exit! {:?}", new_environment);
+                    self.current_environment = new_environment;
+                    self.camera_position = new_camera_position;
+                }
             } else {
                 console_log!("Crossed into {:?}", new_environment);
                 self.current_environment = new_environment;

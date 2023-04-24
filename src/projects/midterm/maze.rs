@@ -1,4 +1,5 @@
 use nalgebra::{point, vector, Matrix4, Point3, Unit, UnitVector3, Vector3, Vector4};
+use rand::seq::SliceRandom;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use rand::{distributions::Uniform, SeedableRng};
@@ -18,7 +19,7 @@ pub(crate) const MIN_TUNNEL_LENGTH: f64 = 20.0;
 pub(crate) const MAX_TUNNEL_LENGTH: f64 = 60.0;
 pub(crate) const MIN_TWIST: f64 = -120.0;
 pub(crate) const MAX_TWIST: f64 = 120.0;
-pub(crate) const TARGET_LANDING_COUNT: usize = 100;
+pub(crate) const TARGET_LANDING_COUNT: usize = 2;
 
 pub(crate) fn min_angle_between_tunnels() -> f64 {
     2.0 * f64::atan((TUNNEL_WIDTH / 2.0) / LANDING_RADIUS)
@@ -84,6 +85,10 @@ impl ConnectorIdentifier {
     }
 }
 
+/// An "attachment point" of a connector.
+/// A connector could have multiple of these,
+/// e.g. a landing has one for each tunnel it is connected to.
+/// Each coupler point is the middle of where the attached tunnel connects.
 pub(crate) struct Coupler {
     pub(crate) point: Point3<f64>,
     pub(crate) up: UnitVector3<f64>,
@@ -267,6 +272,10 @@ impl Maze {
         for angle in get_landing_tunnel_angles(&mut rng) {
             extend_landing(start_landing, &input_direction, angle, &mut rng, &mut maze);
         }
+
+        // Choose a random dead end and mark it as the exit
+        let exit = maze.dead_ends.choose_mut(&mut rng).unwrap();
+        exit.is_exit = true;
 
         console_log!("random seed: {}", rng_seed);
         console_log!("tunnels: {}", maze.tunnels.len());

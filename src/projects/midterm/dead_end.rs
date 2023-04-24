@@ -14,6 +14,8 @@ pub(crate) struct DeadEnd {
     pub(crate) up: UnitVector3<f64>,
     pub(crate) point: Point3<f64>,
     tunnel_id: Option<usize>,
+    /// Whether this "dead end" corresponds to the exit (/win condition) of the maze
+    pub(crate) is_exit: bool,
 }
 
 impl Connector for DeadEnd {
@@ -39,10 +41,12 @@ impl DeadEnd {
             point,
             up,
             tunnel_id: None,
+            is_exit: false,
         }
     }
     pub(crate) fn to_environment(&self, maze: &MazeSkeleton) -> DeadEndEnvironment {
         assert!(self.tunnel_id.is_some());
+
         let tunnel_id = self.tunnel_id.unwrap();
         let tunnel = &maze.tunnels[tunnel_id];
         let door = make_door(
@@ -59,7 +63,13 @@ impl DeadEnd {
             ),
         );
         DeadEndEnvironment {
-            faces: vec![door.to_face()],
+            faces: if self.is_exit {
+                // Don't display a face if it is the exit, just show it as "open space",
+                // like an open a door you can walk through.
+                vec![]
+            } else {
+                vec![door.to_face()]
+            },
             exit_faces: vec![(EnvironmentIdentifier::Tunnel(tunnel_id), door.to_face())],
             dead_end: self.clone(),
         }
