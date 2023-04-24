@@ -15,7 +15,7 @@ const MIN_TUNNEL_LENGTH: f64 = 20.0;
 const MAX_TUNNEL_LENGTH: f64 = 60.0;
 const MIN_TWIST: f64 = -120.0;
 const MAX_TWIST: f64 = 120.0;
-const TARGET_LANDING_COUNT: usize = 1000;
+const TARGET_LANDING_COUNT: usize = 100;
 
 fn min_angle_between_tunnels() -> f64 {
     2.0 * f64::atan((TUNNEL_WIDTH / 2.0) / LANDING_RADIUS)

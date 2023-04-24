@@ -103,7 +103,7 @@ export const Midterm = ({}: Props) => {
   }, [random_seed]);
 
   return (
-    <div class="transform-demo">
+    <div class="demo">
       {error}
       <canvas ref={canvas_ref}></canvas>
       <label>

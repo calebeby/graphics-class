@@ -17,16 +17,13 @@ import "../content-page.css";
 <style>
   .page-content {
     display: grid;
-    grid-template-columns: 1fr minmax(40em, calc(100vw - 2em)) 1fr;
+    grid-template-columns: 1fr 40em 1fr;
+    /* grid-template-columns: 1fr minmax(40em, calc(100vw - 2em)) 1fr; */
     margin: 5em 0;
-    width: 40em;
-    max-width: calc(100vw - 2em);
-    display: flex;
-    flex-direction: column;
     gap: 1.5em;
   }
-
   .page-content > :global(*) {
     margin: 0;
+    grid-column: 2;
   }
 </style>
