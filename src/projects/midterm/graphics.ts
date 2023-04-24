@@ -306,6 +306,7 @@ export const init_canvas = (
   window.addEventListener("blur", visibilitychange_listener);
 
   return {
+    render,
     cleanup() {
       // Remove all listeners, clean up webgl memory, etc.
       cancelAnimationFrame(frame_req);

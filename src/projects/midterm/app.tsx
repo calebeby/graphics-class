@@ -47,10 +47,26 @@ export const Midterm = ({}: Props) => {
     () => get_seed_from_url() || get_random_seed(),
   );
   const [rust_module, set_rust_module] = useState<rust.InitOutput | null>(null);
+  const render_ref = useRef<() => void>();
+
+  const capture_screenshot = () => {
+    const link = document.createElement("a");
+    link.download = "maze-screenshot.png";
+    render_ref.current?.();
+    link.href = canvas_ref.current!.toDataURL();
+    link.click();
+  };
+
+  useEffect(() => {
+    const m_listener = (e: KeyboardEvent) => {
+      if (e.key === "m") capture_screenshot();
+    };
+    window.addEventListener("keypress", m_listener);
+    return () => window.removeEventListener("keypress", m_listener);
+  }, []);
 
   useEffect(() => {
     const popstate_listener = () => {
-      console.log("popstate");
       let seed = get_seed_from_url();
       if (seed !== undefined) set_random_seed(seed);
     };
@@ -87,7 +103,8 @@ export const Midterm = ({}: Props) => {
       },
       random_seed,
     };
-    const { cleanup } = init_canvas(canvas, game_state);
+    const { cleanup, render } = init_canvas(canvas, game_state);
+    render_ref.current = render;
     return () => {
       cleanup();
       game_state?.rust_state.free();
@@ -127,6 +144,7 @@ export const Midterm = ({}: Props) => {
       >
         Randomize Maze
       </button>
+      <button onClick={capture_screenshot}>Download screenshot</button>
     </div>
   );
 };
