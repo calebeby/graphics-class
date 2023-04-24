@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Vector2};
+use nalgebra::Point3;
 
 use crate::face::Face;
 

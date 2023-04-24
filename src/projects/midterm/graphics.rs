@@ -7,10 +7,13 @@ pub(crate) extern crate rand;
 pub(crate) extern crate rand_chacha;
 pub(crate) extern crate wasm_bindgen;
 mod bounding_box;
+mod dead_end;
 mod face;
+mod landing;
 mod load_obj;
 mod maze;
 mod ray;
+mod tunnel;
 
 use face::Face;
 use maze::{Environment, EnvironmentIdentifier, Maze};
