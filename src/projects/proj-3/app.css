@@ -3,7 +3,10 @@ body {
 }
 
 .transform-demo {
+  grid-column: 1 / -1;
+  margin: 0 auto;
   width: 100%;
+  max-width: 1400px;
   padding: 1em;
   border: 2px solid #0000001a;
   border-radius: 10px;
