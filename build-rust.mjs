@@ -65,20 +65,21 @@ if (is_dev) {
 
     await watch([`src/projects/${project}`], handle_change, {
       ignore: [
-        "node_modules",
-        "package.json",
-        ".gitignore",
+        /package\.json$/,
+        /\.gitignore/,
         /\.ts$/,
         /\.tsx$/,
         /\.js$/,
         /\.css$/,
+        /\.glsl$/,
         /\.png$/,
         /\.jpg$/,
         /\.jpeg$/,
         /\.webp$/,
         /\.wasm$/,
-        "target",
-        "Session.vim",
+        /Session\.vim/,
+        /~$/,
+        /^\d*$/,
       ],
       clear: false,
     });

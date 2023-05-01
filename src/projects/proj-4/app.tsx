@@ -87,6 +87,9 @@ export const Proj4 = ({}: Props) => {
     };
   }, [rust_module]);
 
+  const range = 3;
+  const step = range / 1000;
+
   return (
     <div class="demo">
       {error}
@@ -95,9 +98,9 @@ export const Proj4 = ({}: Props) => {
         Target X
         <input
           type="range"
-          min={0.75}
-          max={3}
-          step={0.001}
+          min={-range}
+          max={range}
+          step={step}
           onInput={(e) => {
             const state = rust_state_ref.current;
             if (!state) return;
@@ -110,9 +113,9 @@ export const Proj4 = ({}: Props) => {
         Target Y
         <input
           type="range"
-          min={0.75}
-          max={3}
-          step={0.001}
+          min={-range}
+          max={range}
+          step={step}
           onInput={(e) => {
             const state = rust_state_ref.current;
             if (!state) return;
@@ -125,9 +128,9 @@ export const Proj4 = ({}: Props) => {
         Target Z
         <input
           type="range"
-          min={0.75}
-          max={3}
-          step={0.001}
+          min={-range}
+          max={range}
+          step={step}
           onInput={(e) => {
             const state = rust_state_ref.current;
             if (!state) return;

@@ -15,7 +15,7 @@ layout(location = 2) in vec2 obj_uv;
 void main(void) {
   gl_Position = camera_transform * transform * obj_vertex;
 
-  vec3 obj_normal2 = normalize(vec3(transform * obj_normal));
+  vec3 obj_normal2 = normalize(mat3(transform) * vec3(obj_normal));
   float shade_1 = clamp(dot(obj_normal2, vec3(-0.3, 0.3, -0.3)), 0.0, 1.0);
   float shade_2 = clamp(dot(obj_normal2, vec3(0.0, 1.0, 0.0)), 0.0, 1.0);
   float shade_3 = clamp(dot(obj_normal2, vec3(0.0, -1.0, 0.0)), 0.0, 1.0);

@@ -366,12 +366,16 @@ impl GameState {
         let arm_2_angle = c + d;
         let arm_1_angle = (h / m).atan() - (delta_y / dist_in_xz_plane).atan();
 
-        // Arm 1 joint
-        self.game_objects[3].dynamic_transform =
-            Rotation3::from_euler_angles(0.0, 0.0, -arm_1_angle).to_homogeneous();
-        // Arm 2 joint
-        self.game_objects[4].dynamic_transform =
-            Rotation3::from_euler_angles(0.0, 0.0, arm_2_angle).to_homogeneous();
+        if !arm_1_angle.is_nan() {
+            // Arm 1 joint
+            self.game_objects[3].dynamic_transform =
+                Rotation3::from_euler_angles(0.0, 0.0, -arm_1_angle).to_homogeneous();
+        }
+        if !arm_2_angle.is_nan() {
+            // Arm 2 joint
+            self.game_objects[4].dynamic_transform =
+                Rotation3::from_euler_angles(0.0, 0.0, arm_2_angle).to_homogeneous();
+        }
     }
 
     // It would be a good idea to have this accept the arguments as a struct,
