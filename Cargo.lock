@@ -310,6 +310,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "proj-4"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "getrandom",
+ "nalgebra",
+ "num-traits",
+ "parry2d-f64",
+ "parry3d-f64",
+ "rand",
+ "rand_chacha",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
