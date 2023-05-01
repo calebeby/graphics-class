@@ -27,7 +27,7 @@ body {
 }
 
 .demo canvas:not(.active) {
-  filter: saturate(0) brightness(0.7);
+  filter: blur(1px);
   cursor: pointer;
 }
 

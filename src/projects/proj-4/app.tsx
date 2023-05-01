@@ -95,16 +95,13 @@ export const Proj4 = ({}: Props) => {
         Target X
         <input
           type="range"
-          min={-Math.PI}
-          max={Math.PI}
+          min={0.75}
+          max={3}
           step={0.001}
           onInput={(e) => {
             const state = rust_state_ref.current;
             if (!state) return;
-            state.update_joint_positions(
-              e.currentTarget.valueAsNumber,
-              undefined,
-            );
+            state.update_target_x(e.currentTarget.valueAsNumber);
             render_ref.current?.();
           }}
         />
@@ -113,16 +110,28 @@ export const Proj4 = ({}: Props) => {
         Target Y
         <input
           type="range"
-          min={-Math.PI}
-          max={Math.PI}
+          min={0.75}
+          max={3}
           step={0.001}
           onInput={(e) => {
             const state = rust_state_ref.current;
             if (!state) return;
-            state.update_joint_positions(
-              undefined,
-              e.currentTarget.valueAsNumber,
-            );
+            state.update_target_y(-e.currentTarget.valueAsNumber);
+            render_ref.current?.();
+          }}
+        />
+      </label>
+      <label>
+        Target Z
+        <input
+          type="range"
+          min={0.75}
+          max={3}
+          step={0.001}
+          onInput={(e) => {
+            const state = rust_state_ref.current;
+            if (!state) return;
+            state.update_target_z(e.currentTarget.valueAsNumber);
             render_ref.current?.();
           }}
         />

@@ -17,6 +17,8 @@ import metal_texture from "./assets/metal-texture.jpg";
 import obj_base from "./assets/objs/Base.obj?url";
 import obj_shoulder_1 from "./assets/objs/Shoulder 1.obj?url";
 import obj_arm_1 from "./assets/objs/Arm 1.obj?url";
+import obj_arm_2 from "./assets/objs/Arm 2.obj?url";
+import obj_target_ico from "./assets/objs/Target Ico.obj?url";
 import { TransformMatrix } from "./pkg";
 
 const load_image = (src: string) => {
@@ -114,7 +116,7 @@ export const init_canvas = async (
   gl.bufferData(gl.ARRAY_BUFFER, skybox_points, gl.STATIC_DRAW);
 
   interface GameObjectDescriptor {
-    parent?: number;
+    parent?: GameObjectDescriptor;
     url: string;
     initial_transform: TransformMatrix;
   }
@@ -123,29 +125,50 @@ export const init_canvas = async (
   // this scales to inches to match how my model is defined in onshape
   const INCHES = 0.0254;
 
+  const target: GameObjectDescriptor = {
+    url: obj_target_ico,
+    initial_transform: TransformMatrix.identity(),
+  };
+  const base: GameObjectDescriptor = {
+    url: obj_base,
+    initial_transform: TransformMatrix.rotation_euler(Math.PI / 2, 0, 0),
+  };
+  const shoulder: GameObjectDescriptor = {
+    url: obj_shoulder_1,
+    initial_transform: TransformMatrix.identity(),
+    parent: base,
+  };
+  const arm_1: GameObjectDescriptor = {
+    url: obj_arm_1,
+    initial_transform: TransformMatrix.translation(
+      16.0 * INCHES,
+      0.0,
+      10.0 * INCHES,
+    ).times(TransformMatrix.rotation_euler(0, Math.PI / 2, 0)),
+    parent: shoulder,
+  };
+  const arm_2: GameObjectDescriptor = {
+    url: obj_arm_2,
+    initial_transform: TransformMatrix.translation(
+      0.0,
+      -72.0 * INCHES,
+      0.0,
+    ).times(TransformMatrix.rotation_euler(Math.PI, 0, 0)),
+    parent: arm_1,
+  };
   const game_object_descriptors: GameObjectDescriptor[] = [
-    {
-      url: obj_base,
-      initial_transform: TransformMatrix.rotation_euler(Math.PI / 2, 0, 0),
-    },
-    {
-      url: obj_shoulder_1,
-      initial_transform: TransformMatrix.identity(),
-      parent: 0,
-    },
-    {
-      url: obj_arm_1,
-      initial_transform: TransformMatrix.rotation_euler(
-        0,
-        Math.PI / 2,
-        0,
-      ).times(TransformMatrix.translation(-10.0 * INCHES, 0.0, 16.0 * INCHES)),
-      parent: 1,
-    },
+    target,
+    base,
+    shoulder,
+    arm_1,
+    arm_2,
   ];
   const loaded_game_object_descriptors = await Promise.all(
-    game_object_descriptors.map(async (obj_descriptor) => ({
+    game_object_descriptors.map(async (obj_descriptor, i) => ({
       ...obj_descriptor,
+      parent: obj_descriptor.parent
+        ? game_object_descriptors.indexOf(obj_descriptor.parent)
+        : i,
       obj_text: await fetch(obj_descriptor.url).then((res) => res.text()),
     })),
   );
@@ -154,9 +177,7 @@ export const init_canvas = async (
     const game_object_descriptor = loaded_game_object_descriptors[i];
     const object = new rust.GameObject(
       game_object_descriptor.obj_text,
-      game_object_descriptor.parent === undefined
-        ? Number(i)
-        : game_object_descriptor.parent,
+      game_object_descriptor.parent,
       game_object_descriptor.initial_transform,
     );
     object.obj_vert_buffer = gl.createBuffer();
@@ -235,16 +256,6 @@ export const init_canvas = async (
   };
   const dblclick_listener = () => {
     fullscreen();
-  };
-
-  const visibilitychange_listener = () => {
-    if (
-      document.visibilityState === "visible" &&
-      document.activeElement !== null
-    ) {
-      canvas.requestPointerLock();
-      render();
-    }
   };
 
   let last_render_time = new Date().getTime();
@@ -381,9 +392,6 @@ export const init_canvas = async (
   canvas.addEventListener("click", click_listener);
   canvas.addEventListener("dblclick", dblclick_listener);
   document.addEventListener("pointerlockchange", render);
-  window.addEventListener("visibilitychange", visibilitychange_listener);
-  window.addEventListener("focus", visibilitychange_listener);
-  window.addEventListener("blur", visibilitychange_listener);
 
   return {
     render,
@@ -400,9 +408,6 @@ export const init_canvas = async (
       canvas.removeEventListener("click", click_listener);
       canvas.removeEventListener("dblclick", dblclick_listener);
       document.removeEventListener("pointerlockchange", render);
-      window.removeEventListener("visibilitychange", visibilitychange_listener);
-      window.removeEventListener("focus", visibilitychange_listener);
-      window.removeEventListener("blur", visibilitychange_listener);
     },
   };
 };

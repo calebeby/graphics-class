@@ -11,6 +11,8 @@ mod face;
 mod load_obj;
 mod ray;
 
+use std::f64::consts::PI;
+
 use face::Face;
 use nalgebra::{
     point, vector, Matrix4, Point3, Rotation3, Scale3, Translation3, Unit, UnitQuaternion,
@@ -182,6 +184,7 @@ pub struct GameState {
     camera_velocity: Vector3<f64>,
     aspect_ratio: f64,
     game_objects: Vec<GameObject>,
+    target: Point3<f64>,
 }
 
 /// A little wrapper around the nalgebra matrix4 class, for JS use,
@@ -255,10 +258,11 @@ impl GameState {
         console_error_panic_hook::set_once();
         Self {
             aspect_ratio: 1.0,
-            camera_position: point![1.0, 1.0, 1.0],
-            camera_direction: UnitVector3::new_normalize(vector![0.0, 0.0, -1.0]),
+            camera_position: point![3.0, 0.0, 0.0],
+            camera_direction: UnitVector3::new_normalize(vector![-1.0, 0.0, 0.0]),
             camera_velocity: Vector3::zeros(),
             game_objects: vec![],
+            target: Point3::origin(),
         }
     }
 
@@ -310,15 +314,64 @@ impl GameState {
     }
 
     #[wasm_bindgen]
-    pub fn update_joint_positions(&mut self, x: Option<f64>, y: Option<f64>) {
-        if let Some(x) = x {
-            self.game_objects[1].dynamic_transform =
-                Rotation3::from_euler_angles(0.0, 0.0, x).to_homogeneous();
-        }
-        if let Some(y) = y {
-            self.game_objects[2].dynamic_transform =
-                Rotation3::from_euler_angles(0.0, 0.0, y).to_homogeneous();
-        }
+    pub fn update_target_x(&mut self, x: f64) {
+        self.target.x = x;
+        self.update_inverse_kinematics();
+    }
+
+    #[wasm_bindgen]
+    pub fn update_target_y(&mut self, y: f64) {
+        self.target.y = y;
+        self.update_inverse_kinematics();
+    }
+
+    #[wasm_bindgen]
+    pub fn update_target_z(&mut self, z: f64) {
+        self.target.z = z;
+        self.update_inverse_kinematics();
+    }
+
+    #[inline]
+    fn update_inverse_kinematics(&mut self) {
+        // Target icosahedron
+        self.game_objects[0].dynamic_transform = Translation3::from(self.target).to_homogeneous();
+
+        // Onshape exports the OBJ in meters,
+        // this scales to inches to match how my model is defined in onshape
+        const INCHES: f64 = 0.0254;
+
+        const ARM_1_LENGTH: f64 = 72.0 * INCHES;
+        const ARM_2_LENGTH: f64 = 48.0 * INCHES;
+        const ARM_1_START_HEIGHT: f64 = 10.0 * INCHES;
+
+        // Turn the shoulder joint to face the target position
+        self.game_objects[2].dynamic_transform = Rotation3::from_euler_angles(
+            0.0,
+            0.0,
+            PI / 2.0 + f64::atan2(self.target.z, self.target.x),
+        )
+        .to_homogeneous();
+
+        let delta_y = self.target.y + ARM_1_START_HEIGHT;
+        let dist_to_target =
+            (self.target.x.powi(2) + delta_y.powi(2) + self.target.z.powi(2)).sqrt();
+        let dist_in_xz_plane = (self.target.x.powi(2) + self.target.z.powi(2)).sqrt();
+
+        let n = (-ARM_1_LENGTH.powi(2) + ARM_2_LENGTH.powi(2) + dist_to_target.powi(2))
+            / (2.0 * dist_to_target);
+        let m = dist_to_target - n;
+        let h = (ARM_2_LENGTH.powi(2) - n.powi(2)).sqrt();
+        let c = (n / h).atan();
+        let d = (m / h).atan();
+        let arm_2_angle = c + d;
+        let arm_1_angle = (h / m).atan() - (delta_y / dist_in_xz_plane).atan();
+
+        // Arm 1 joint
+        self.game_objects[3].dynamic_transform =
+            Rotation3::from_euler_angles(0.0, 0.0, -arm_1_angle).to_homogeneous();
+        // Arm 2 joint
+        self.game_objects[4].dynamic_transform =
+            Rotation3::from_euler_angles(0.0, 0.0, arm_2_angle).to_homogeneous();
     }
 
     // It would be a good idea to have this accept the arguments as a struct,
