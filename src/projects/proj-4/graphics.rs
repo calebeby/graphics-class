@@ -345,30 +345,44 @@ impl GameState {
         const INCHES: f64 = 0.0254;
 
         const ARM_1_LENGTH: f64 = 72.0 * INCHES;
-        const ARM_2_LENGTH: f64 = 48.0 * INCHES;
-        const ARM_1_START_HEIGHT: f64 = 10.0 * INCHES;
+        const ARM_2_TO_WRIST_END: f64 = (48.0 + 30.0) * INCHES;
+        const ARM_1_START_FROM_GROUND: f64 = 10.0 * INCHES;
+        const END_LENGTH: f64 = 33.0 * INCHES;
+
+        let end_direction = vector![0.0, 1.0, 0.0];
+        let end_vector = end_direction * END_LENGTH;
+
+        let wrist_end_position = self.target - end_vector;
 
         // Turn the shoulder joint to face the target position
-        self.game_objects[3].dynamic_transform = Rotation3::from_euler_angles(
+        let shoulder_rotation = Rotation3::from_euler_angles(
             0.0,
             0.0,
-            PI / 2.0 + f64::atan2(self.target.z, self.target.x),
+            PI / 2.0 + f64::atan2(wrist_end_position.z, wrist_end_position.x),
         )
         .to_homogeneous();
+        // TODO: or z here?
+        let shoulder_direction = shoulder_rotation.transform_vector(&vector![0.0, 0.0, 1.0]);
+        self.game_objects[3].dynamic_transform = shoulder_rotation;
 
-        let delta_y = self.target.y + ARM_1_START_HEIGHT;
+        let delta_y = wrist_end_position.y + ARM_1_START_FROM_GROUND;
         let dist_to_target =
-            (self.target.x.powi(2) + delta_y.powi(2) + self.target.z.powi(2)).sqrt();
-        let dist_in_xz_plane = (self.target.x.powi(2) + self.target.z.powi(2)).sqrt();
+            (wrist_end_position.x.powi(2) + delta_y.powi(2) + wrist_end_position.z.powi(2)).sqrt();
+        let dist_in_xz_plane = (wrist_end_position.x.powi(2) + wrist_end_position.z.powi(2)).sqrt();
 
-        let n = (-ARM_1_LENGTH.powi(2) + ARM_2_LENGTH.powi(2) + dist_to_target.powi(2))
+        let n = (-ARM_1_LENGTH.powi(2) + ARM_2_TO_WRIST_END.powi(2) + dist_to_target.powi(2))
             / (2.0 * dist_to_target);
         let m = dist_to_target - n;
-        let h = (ARM_2_LENGTH.powi(2) - n.powi(2)).sqrt();
+        let h = (ARM_2_TO_WRIST_END.powi(2) - n.powi(2)).sqrt();
         let c = (n / h).atan();
         let d = (m / h).atan();
         let arm_2_angle = c + d;
         let arm_1_angle = (h / m).atan() - (delta_y / dist_in_xz_plane).atan();
+
+        let end_projected_in_shoulder_direction = -end_direction.dot(&shoulder_direction);
+        let end_projected_in_up = -end_direction.y;
+        let c = f64::atan(end_projected_in_shoulder_direction / end_projected_in_up);
+        let end_angle = arm_1_angle + arm_2_angle - PI / 2.0 - c;
 
         if !arm_1_angle.is_nan() {
             // Arm 1 joint
@@ -379,6 +393,11 @@ impl GameState {
             // Arm 2 joint
             self.game_objects[5].dynamic_transform =
                 Rotation3::from_euler_angles(0.0, 0.0, arm_2_angle).to_homogeneous();
+        }
+        if !end_angle.is_nan() {
+            // End joint
+            self.game_objects[7].dynamic_transform =
+                Rotation3::from_euler_angles(0.0, 0.0, end_angle).to_homogeneous();
         }
     }
 

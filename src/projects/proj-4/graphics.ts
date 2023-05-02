@@ -18,6 +18,8 @@ import obj_base from "./assets/objs/Base.obj?url";
 import obj_shoulder_1 from "./assets/objs/Shoulder 1.obj?url";
 import obj_arm_1 from "./assets/objs/Arm 1.obj?url";
 import obj_arm_2 from "./assets/objs/Arm 2.obj?url";
+import obj_wrist from "./assets/objs/Wrist.obj?url";
+import obj_end from "./assets/objs/End.obj?url";
 import obj_target_ico from "./assets/objs/Target Ico.obj?url";
 import { TransformMatrix } from "./pkg";
 
@@ -153,7 +155,7 @@ export const init_canvas = async (
   const arm_1: GameObjectDescriptor = {
     url: obj_arm_1,
     initial_transform: TransformMatrix.translation(
-      16.0 * INCHES,
+      8.0 * INCHES,
       0.0,
       10.0 * INCHES,
     ).times(TransformMatrix.rotation_euler(0, Math.PI / 2, 0)),
@@ -168,6 +170,26 @@ export const init_canvas = async (
     ).times(TransformMatrix.rotation_euler(Math.PI, 0, 0)),
     parent: arm_1,
   };
+  const wrist: GameObjectDescriptor = {
+    url: obj_wrist,
+    initial_transform: TransformMatrix.translation(
+      0.0,
+      -48.0 * INCHES,
+      8.0 * INCHES,
+    ).times(TransformMatrix.rotation_euler(Math.PI / 2, Math.PI / 2, 0)),
+    parent: arm_2,
+  };
+  const end: GameObjectDescriptor = {
+    url: obj_end,
+    initial_transform: TransformMatrix.translation(
+      0.0,
+      0.0,
+      30.0 * INCHES,
+    ).times(
+      TransformMatrix.rotation_euler(Math.PI / 2, Math.PI / 2, Math.PI / 2),
+    ),
+    parent: wrist,
+  };
   const game_object_descriptors: GameObjectDescriptor[] = [
     light_ball,
     target,
@@ -175,6 +197,8 @@ export const init_canvas = async (
     shoulder,
     arm_1,
     arm_2,
+    wrist,
+    end,
   ];
   const loaded_game_object_descriptors = await Promise.all(
     game_object_descriptors.map(async (obj_descriptor, i) => ({
