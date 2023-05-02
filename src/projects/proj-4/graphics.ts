@@ -53,6 +53,14 @@ export const init_canvas = async (
     rendering_program,
     "transform",
   );
+  const id_light_position = gl.getUniformLocation(
+    rendering_program,
+    "light_position",
+  );
+  const id_camera_position = gl.getUniformLocation(
+    rendering_program,
+    "camera_position",
+  );
   const matrix_id_skybox_transform = gl.getUniformLocation(
     skybox_rendering_program,
     "transform",
@@ -125,6 +133,10 @@ export const init_canvas = async (
   // this scales to inches to match how my model is defined in onshape
   const INCHES = 0.0254;
 
+  const light_ball: GameObjectDescriptor = {
+    url: obj_target_ico,
+    initial_transform: TransformMatrix.identity(),
+  };
   const target: GameObjectDescriptor = {
     url: obj_target_ico,
     initial_transform: TransformMatrix.identity(),
@@ -157,6 +169,7 @@ export const init_canvas = async (
     parent: arm_1,
   };
   const game_object_descriptors: GameObjectDescriptor[] = [
+    light_ball,
     target,
     base,
     shoulder,
@@ -372,6 +385,14 @@ export const init_canvas = async (
         transform_matrix.to_f64_array(),
         0,
         16,
+      );
+      gl.uniform3fv(
+        id_light_position,
+        Float32Array.from(game_state.light_position),
+      );
+      gl.uniform3fv(
+        id_camera_position,
+        Float32Array.from(game_state.rust_state.camera_position()),
       );
       gl.drawArrays(gl.TRIANGLES, 0, object_render_snapshot.num_points);
       // Reset Attribute Array

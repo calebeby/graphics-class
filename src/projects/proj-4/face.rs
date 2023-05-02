@@ -8,7 +8,7 @@ pub(crate) struct Face<T: Number> {
     uvs: Vec<Vector2<T>>,
     bounding_box: BoundingBox<T, 3>,
     /// Unit vector in the "outwards" direction of the face
-    normal: UnitVector3<T>,
+    pub(crate) normal: UnitVector3<T>,
 }
 
 #[derive(Clone, Copy)]

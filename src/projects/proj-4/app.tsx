@@ -27,6 +27,7 @@ export interface GameState {
     input_d: boolean;
   };
   skybox_vert_buffer?: WebGLBuffer | null;
+  light_position: [x: number, y: number, z: number];
 }
 
 interface Props {}
@@ -36,7 +37,7 @@ export const Proj4 = ({}: Props) => {
   const [error, _reset_error] = useErrorBoundary();
   const canvas_ref = useRef<HTMLCanvasElement>(null);
   const [rust_module, set_rust_module] = useState<rust.InitOutput | null>(null);
-  const rust_state_ref = useRef<rust.GameState | null>(null);
+  const state_ref = useRef<GameState | null>(null);
   const render_ref = useRef<() => void>();
 
   const capture_screenshot = () => {
@@ -74,8 +75,9 @@ export const Proj4 = ({}: Props) => {
         input_s: false,
         input_d: false,
       },
+      light_position: [10.0, 10.0, 0.0],
     };
-    rust_state_ref.current = rust_state;
+    state_ref.current = game_state;
     let canvas_cleanup = () => {};
     init_canvas(canvas, game_state).then(({ cleanup, render }) => {
       canvas_cleanup = cleanup;
@@ -83,63 +85,135 @@ export const Proj4 = ({}: Props) => {
     });
     return () => {
       canvas_cleanup();
-      game_state?.rust_state.free();
+      try {
+        game_state?.rust_state.free();
+      } catch {}
     };
   }, [rust_module]);
-
-  const range = 3;
-  const step = range / 1000;
 
   return (
     <div class="demo">
       {error}
       <canvas ref={canvas_ref}></canvas>
-      <label>
-        Target X
-        <input
-          type="range"
-          min={-range}
-          max={range}
-          step={step}
-          onInput={(e) => {
-            const state = rust_state_ref.current;
-            if (!state) return;
-            state.update_target_x(e.currentTarget.valueAsNumber);
-            render_ref.current?.();
-          }}
-        />
-      </label>
-      <label>
-        Target Y
-        <input
-          type="range"
-          min={-range}
-          max={range}
-          step={step}
-          onInput={(e) => {
-            const state = rust_state_ref.current;
-            if (!state) return;
-            state.update_target_y(-e.currentTarget.valueAsNumber);
-            render_ref.current?.();
-          }}
-        />
-      </label>
-      <label>
-        Target Z
-        <input
-          type="range"
-          min={-range}
-          max={range}
-          step={step}
-          onInput={(e) => {
-            const state = rust_state_ref.current;
-            if (!state) return;
-            state.update_target_z(e.currentTarget.valueAsNumber);
-            render_ref.current?.();
-          }}
-        />
-      </label>
+      <CoordinateInput
+        name="Target Position"
+        min={-3}
+        max={3}
+        on_change={(x, y, z) => {
+          const state = state_ref.current;
+          if (!state) return;
+          state.rust_state.update_target(x, y, z);
+          render_ref.current?.();
+        }}
+      />
+      <CoordinateInput
+        name="Light Source Position"
+        min={-20}
+        max={20}
+        on_change={(x, y, z) => {
+          const state = state_ref.current;
+          if (!state) return;
+          state.light_position = [x, y, z];
+          state.rust_state.update_light_position(x, y, z);
+          render_ref.current?.();
+        }}
+      />
       <button onClick={capture_screenshot}>Download screenshot</button>
     </div>
+  );
+};
+
+const CoordinateInput = ({
+  on_change,
+  name,
+  min,
+  max,
+}: {
+  on_change: (x: number, y: number, z: number) => void;
+  name: string;
+  min: number;
+  max: number;
+}) => {
+  const [x, set_x] = useState(0.5);
+  const [y, set_y] = useState(0.5);
+  const [z, set_z] = useState(0.5);
+  const step_text = (max - min) / 100;
+  const step_range = (max - min) / 1000;
+  useEffect(() => {
+    on_change(x, y, z);
+  }, [x, y, z]);
+  return (
+    <>
+      <h2>{name}</h2>
+      <div>
+        (
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step_text}
+          value={x}
+          onInput={(e) => {
+            set_x(e.currentTarget.valueAsNumber);
+          }}
+        />
+        ,
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step_text}
+          value={y}
+          onInput={(e) => {
+            set_y(e.currentTarget.valueAsNumber);
+          }}
+        />
+        ,
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step_text}
+          value={z}
+          onInput={(e) => {
+            set_z(e.currentTarget.valueAsNumber);
+          }}
+        />
+        )
+      </div>
+
+      <div class="coordinate-input-ranges">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step_range}
+          value={x}
+          onInput={(e) => {
+            set_x(e.currentTarget.valueAsNumber);
+          }}
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step_range}
+          value={y}
+          onInput={(e) => {
+            set_y(e.currentTarget.valueAsNumber);
+          }}
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step_range}
+          value={z}
+          onInput={(e) => {
+            set_z(e.currentTarget.valueAsNumber);
+          }}
+        />
+      </div>
+    </>
   );
 };

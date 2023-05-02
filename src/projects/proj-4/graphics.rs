@@ -185,6 +185,7 @@ pub struct GameState {
     aspect_ratio: f64,
     game_objects: Vec<GameObject>,
     target: Point3<f64>,
+    light_position: Point3<f64>,
 }
 
 /// A little wrapper around the nalgebra matrix4 class, for JS use,
@@ -263,6 +264,7 @@ impl GameState {
             camera_velocity: Vector3::zeros(),
             game_objects: vec![],
             target: Point3::origin(),
+            light_position: Point3::origin(),
         }
     }
 
@@ -314,27 +316,29 @@ impl GameState {
     }
 
     #[wasm_bindgen]
-    pub fn update_target_x(&mut self, x: f64) {
+    pub fn update_target(&mut self, x: f64, y: f64, z: f64) {
         self.target.x = x;
-        self.update_inverse_kinematics();
-    }
-
-    #[wasm_bindgen]
-    pub fn update_target_y(&mut self, y: f64) {
         self.target.y = y;
+        self.target.z = z;
         self.update_inverse_kinematics();
     }
 
     #[wasm_bindgen]
-    pub fn update_target_z(&mut self, z: f64) {
-        self.target.z = z;
+    pub fn update_light_position(&mut self, x: f64, y: f64, z: f64) {
+        self.light_position.x = x;
+        self.light_position.y = y;
+        self.light_position.z = z;
         self.update_inverse_kinematics();
     }
 
     #[inline]
     fn update_inverse_kinematics(&mut self) {
+        // Light ball
+        self.game_objects[0].dynamic_transform =
+            Translation3::from(self.light_position).to_homogeneous();
+
         // Target icosahedron
-        self.game_objects[0].dynamic_transform = Translation3::from(self.target).to_homogeneous();
+        self.game_objects[1].dynamic_transform = Translation3::from(self.target).to_homogeneous();
 
         // Onshape exports the OBJ in meters,
         // this scales to inches to match how my model is defined in onshape
@@ -345,7 +349,7 @@ impl GameState {
         const ARM_1_START_HEIGHT: f64 = 10.0 * INCHES;
 
         // Turn the shoulder joint to face the target position
-        self.game_objects[2].dynamic_transform = Rotation3::from_euler_angles(
+        self.game_objects[3].dynamic_transform = Rotation3::from_euler_angles(
             0.0,
             0.0,
             PI / 2.0 + f64::atan2(self.target.z, self.target.x),
@@ -368,12 +372,12 @@ impl GameState {
 
         if !arm_1_angle.is_nan() {
             // Arm 1 joint
-            self.game_objects[3].dynamic_transform =
+            self.game_objects[4].dynamic_transform =
                 Rotation3::from_euler_angles(0.0, 0.0, -arm_1_angle).to_homogeneous();
         }
         if !arm_2_angle.is_nan() {
             // Arm 2 joint
-            self.game_objects[4].dynamic_transform =
+            self.game_objects[5].dynamic_transform =
                 Rotation3::from_euler_angles(0.0, 0.0, arm_2_angle).to_homogeneous();
         }
     }
@@ -434,6 +438,14 @@ impl GameState {
         // So I added this
         let camera_up = forwards.cross(&right);
         self.camera_velocity -= decel * (self.camera_velocity.dot(&camera_up)) * camera_up;
+    }
+
+    pub fn camera_position(&self) -> Vec<f32> {
+        vec![
+            self.camera_position.x as _,
+            self.camera_position.y as _,
+            self.camera_position.z as _,
+        ]
     }
 
     pub fn world_to_camera(&self) -> TransformMatrix {
