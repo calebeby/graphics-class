@@ -5,7 +5,10 @@ precision highp float;
 
 uniform sampler2D twoDTex;
 
-in vec4 vs_color;
+/** This is heavily based on Scott's lighting code:
+ * https://whitgit.whitworth.edu/2023/spring/CS-357-1/course_material/-/blob/main/In_Class_Examples/22_Lighting/fs.glsl
+ */
+
 in vec2 vs_uv;
 in vec3 vs_vertex;
 in vec3 vs_normal;
@@ -18,7 +21,7 @@ uniform vec3 camera_position;
 
 void main(void) {
 
-  vec3 base_color = vec3(0.0, 0.5, 1.0);
+  vec3 base_color = vec3(0.3, 0.3, 0.3);
   vec3 L_ambient = base_color; // around the scene light color
   vec3 L_diffuse = base_color + vec3(0.3, 0.3, 0.3); // Scattered light color
   vec3 L_specular = vec3(0.1, 0.1, 0.1); // Color of shininess of object
@@ -34,23 +37,14 @@ void main(void) {
   // Vector of the light source
   vec3 L = normalize(light_position - point);
   // Attenuation factor based on distance from light source
-  /* float F_attenuation = 1.0 / length(light_position - point); */
-  // TODO: why did I have to disable this?
-  float F_attenuation = 1.0;
+  float F_attenuation = 1.0 / length(light_position - point);
 
   vec3 I;
   float costheta = dot(L, vs_normal);
-  /* float costheta = max(dot(L, vs_normal), 0.0); // Diffuse reflection
-     amount */
-  // Remember that if the light is coming in at too much of an angle, there
-  // will be no reflection (hence the 0.0) A different way to describe this
-  // is:
-  //    If the projection of the Light direction to the normal is negative,
-  //    set diffuse amount to 0.0
-
-  vec3 I_ambient = L_ambient * K_ambient; // Start by setting up ambient light
-  // This is just a scalar for the 'room' light, general catch all for complex
-  // reflections
+  // Start by setting up ambient light
+  // This is just a scalar for the 'room' light,
+  // general catch all for complex reflections
+  vec3 I_ambient = L_ambient * K_ambient;
 
   // If our reflectance angle is positive (or worth calculating)
   if (costheta > 0.0) {
@@ -82,11 +76,9 @@ void main(void) {
   } else {
     // Angle is too great, just keep the ambient lighting componenet
     I = I_ambient;
-    /* I = vec3(1.0, 0.0, 0.0); */
   }
 
   vec4 lit_color = color = vec4(I, 1.0);
-  /* color = vs_color; */
   vec4 tex = texture(twoDTex, vs_uv * vec2(1.0, 1.0));
-  color = mix(lit_color, tex, 1.0);
+  color = mix(lit_color, tex, 0.3);
 }
