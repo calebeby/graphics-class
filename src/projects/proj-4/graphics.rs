@@ -349,21 +349,22 @@ impl GameState {
         const ARM_1_START_FROM_GROUND: f64 = 10.0 * INCHES;
         const END_LENGTH: f64 = 33.0 * INCHES;
 
-        let end_direction = vector![0.0, 1.0, 0.0];
+        let end_direction = vector![0.0, 1.0, 0.0].normalize();
         let end_vector = end_direction * END_LENGTH;
 
         let wrist_end_position = self.target - end_vector;
 
+        let shoulder_angle = f64::atan2(wrist_end_position.z, wrist_end_position.x);
         // Turn the shoulder joint to face the target position
-        let shoulder_rotation = Rotation3::from_euler_angles(
-            0.0,
-            0.0,
-            PI / 2.0 + f64::atan2(wrist_end_position.z, wrist_end_position.x),
-        )
-        .to_homogeneous();
-        // TODO: or z here?
-        let shoulder_direction = shoulder_rotation.transform_vector(&vector![0.0, 0.0, 1.0]);
-        self.game_objects[3].dynamic_transform = shoulder_rotation;
+        self.game_objects[3].dynamic_transform =
+            Rotation3::from_euler_angles(0.0, 0.0, PI / 2.0 + shoulder_angle).to_homogeneous();
+
+        let shoulder_rotation_absolute = Rotation3::from_euler_angles(0.0, shoulder_angle, 0.0);
+        let shoulder_direction =
+            shoulder_rotation_absolute.transform_vector(&vector![1.0, 0.0, 0.0]);
+        let perpendicular_to_shoulder_direction =
+            Rotation3::from_euler_angles(0.0, shoulder_angle + PI / 2.0, 0.0)
+                .transform_vector(&vector![1.0, 0.0, 0.0]);
 
         let delta_y = wrist_end_position.y + ARM_1_START_FROM_GROUND;
         let dist_to_target =
@@ -384,6 +385,20 @@ impl GameState {
         let c = f64::atan(end_projected_in_shoulder_direction / end_projected_in_up);
         let end_angle = arm_1_angle + arm_2_angle - PI / 2.0 - c;
 
+        // TODO: which euler angle?
+        let arm_2_up = shoulder_rotation_absolute.transform_vector(
+            &Rotation3::from_euler_angles(arm_1_angle + arm_2_angle, 0.0, 0.0)
+                .transform_vector(&vector![0.0, 1.0, 0.0]),
+        );
+
+        console_log!("{:?}", arm_2_up);
+
+        let wrist_angle = PI / 2.0
+            + f64::atan2(
+                end_direction.dot(&arm_2_up),
+                end_direction.dot(&perpendicular_to_shoulder_direction),
+            );
+
         if !arm_1_angle.is_nan() {
             // Arm 1 joint
             self.game_objects[4].dynamic_transform =
@@ -393,6 +408,11 @@ impl GameState {
             // Arm 2 joint
             self.game_objects[5].dynamic_transform =
                 Rotation3::from_euler_angles(0.0, 0.0, arm_2_angle).to_homogeneous();
+        }
+        if !wrist_angle.is_nan() {
+            // Wrist joint
+            self.game_objects[6].dynamic_transform =
+                Rotation3::from_euler_angles(0.0, 0.0, wrist_angle).to_homogeneous();
         }
         if !end_angle.is_nan() {
             // End joint
