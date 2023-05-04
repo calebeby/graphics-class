@@ -391,8 +391,6 @@ impl GameState {
                 .transform_vector(&vector![0.0, 1.0, 0.0]),
         );
 
-        console_log!("{:?}", arm_2_up);
-
         let wrist_angle = PI / 2.0
             + f64::atan2(
                 end_direction.dot(&arm_2_up),
