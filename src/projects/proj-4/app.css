@@ -27,8 +27,11 @@ body {
 }
 
 .demo canvas:not(.active) {
-  filter: blur(1px);
   cursor: pointer;
+}
+
+.demo canvas.active {
+  box-shadow: 0 0 4px 8px #00ffff;
 }
 
 *,
