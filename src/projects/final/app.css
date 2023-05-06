@@ -1,0 +1,50 @@
+body {
+  margin: 0;
+}
+
+.demo {
+  grid-column: 1 / -1;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 1400px;
+  padding: 1em;
+  border: 2px solid #0000001a;
+  border-radius: 10px;
+  display: grid;
+  gap: 1.5em;
+}
+
+.demo > * {
+  margin: 0;
+}
+
+.demo canvas.layer-canvas {
+  width: 100%;
+}
+.demo canvas:not(.layer-canvas) {
+  aspect-ratio: 16/9;
+  display: block;
+  width: 100%;
+  border-radius: 5px;
+  transition: filter 0.3s ease;
+}
+
+.demo canvas:not(.layer-canvas):not(.active) {
+  cursor: pointer;
+}
+
+.demo canvas.active {
+  box-shadow: 0 0 4px 8px #00ffff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.coordinate-input-ranges {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 2em;
+}

@@ -7,4 +7,5 @@ members=[
   'src/projects/midterm-skybox',
   'src/projects/midterm',
   'src/projects/proj-4',
+  'src/projects/final',
 ]
