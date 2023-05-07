@@ -6,7 +6,7 @@ export const init_layer_canvas = async (
   canvas: HTMLCanvasElement,
   game_state: GameState,
 ) => {
-  const gl = canvas.getContext("webgl2")!;
+  const gl = canvas.getContext("webgl2", { antialias: true })!;
   const rendering_program = init_shader_program(gl, vs_source, fs_source);
 
   canvas.width = 1500;
@@ -110,6 +110,8 @@ export const init_layer_canvas = async (
     gl.drawArrays(gl.TRIANGLES, 0, num_vertices);
     // Reset Attribute Array
     gl.disableVertexAttribArray(attrib_id_vertex);
+    let pixel_buf = new Uint8Array(canvas.width * canvas.height * 4);
+    gl.readPixels(0, 0, 150, 150, gl.RGBA, gl.UNSIGNED_BYTE, pixel_buf);
   };
 
   window.addEventListener("keydown", key_down_listener);

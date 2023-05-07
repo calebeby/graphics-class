@@ -113,7 +113,7 @@ export const Final = ({}: Props) => {
       {error}
       <canvas class="layer-canvas" ref={layer_canvas_ref}></canvas>
       <RangeInput
-        min={0}
+        min={-2}
         max={2}
         step={0.0001}
         on_change={(val) => {
@@ -122,7 +122,7 @@ export const Final = ({}: Props) => {
         }}
       />
       <RangeInput
-        min={0}
+        min={-2}
         max={2}
         step={0.0001}
         on_change={(val) => {
@@ -134,6 +134,7 @@ export const Final = ({}: Props) => {
         min={0.5}
         max={10000}
         step={0.01}
+        initial_value={0.5}
         on_change={(val) => {
           snapshot_parameters.current.zoom_factor = val;
           render_layer_ref.current?.(snapshot_parameters.current);
@@ -160,11 +161,13 @@ export const Final = ({}: Props) => {
 
 const RangeInput = ({
   on_change,
+  initial_value = 0,
   ...props
 }: {
+  initial_value?: number;
   on_change: (val: number) => void;
 } & JSX.IntrinsicElements["input"]) => {
-  const [val, set_val] = useState(0);
+  const [val, set_val] = useState(initial_value);
   useEffect(() => {
     on_change(val);
   }, [val]);
@@ -191,9 +194,9 @@ const CoordinateInput = ({
   max: number;
   step: number;
 }) => {
-  const [x, set_x] = useState(0.5);
-  const [y, set_y] = useState(0.5);
-  const [z, set_z] = useState(0.5);
+  const [x, set_x] = useState(0);
+  const [y, set_y] = useState(0);
+  const [z, set_z] = useState(0);
   useEffect(() => {
     on_change(x, y, z);
   }, [x, y, z]);
