@@ -1,12 +1,11 @@
 use nalgebra::{Point3, Unit, UnitVector3, Vector2};
 
-use crate::{bounding_box::BoundingBox, Number};
+use crate::Number;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Face<T: Number> {
     points: Vec<Point3<T>>,
     uvs: Vec<Vector2<T>>,
-    bounding_box: BoundingBox<T, 3>,
     /// Unit vector in the "outwards" direction of the face
     pub(crate) normal: UnitVector3<T>,
 }
@@ -39,7 +38,6 @@ impl<T: Number> Face<T> {
         let normal = Unit::new_normalize((point_2 - point_1).cross(&x));
 
         Self {
-            bounding_box: BoundingBox::from_points(&points),
             points,
             normal,
             uvs,
@@ -60,11 +58,6 @@ impl<T: Number> Face<T> {
             .windows(2)
             .flat_map(|pair_of_points| vec![self.uvs[0], pair_of_points[0], pair_of_points[1]])
             .collect()
-    }
-
-    #[inline]
-    pub(crate) fn bounding_box(&self) -> &BoundingBox<T, 3> {
-        &self.bounding_box
     }
 
     #[inline]

@@ -42,10 +42,6 @@ export const init_canvas = async (
     rendering_program,
     "camera_transform",
   );
-  const matrix_id_transform = gl.getUniformLocation(
-    rendering_program,
-    "transform",
-  );
   const id_camera_position = gl.getUniformLocation(
     rendering_program,
     "camera_position",
@@ -104,10 +100,11 @@ export const init_canvas = async (
 
   // Hardcoded to match the layout locations declared in the vertex shader
   const attrib_id_obj_vertex = 0;
-  const attrib_id_obj_normals = 1;
-  const attrib_id_obj_uvs = 2;
+  const attrib_id_obj_colors = 1;
 
   game_state.skybox_vert_buffer = gl.createBuffer();
+  game_state.obj_vert_buffer = gl.createBuffer();
+  game_state.obj_colors_buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, game_state.skybox_vert_buffer);
   const skybox_points = rust.generate_skybox_points();
   gl.bufferData(gl.ARRAY_BUFFER, skybox_points, gl.STATIC_DRAW);
@@ -223,17 +220,8 @@ export const init_canvas = async (
     // Draw game objects
     gl.useProgram(rendering_program);
 
-    const render_snapshot = game_state.rust_state.get_render_snapshot();
-    for (const object_id of render_snapshot.object_ids()) {
-      const object_render_snapshot = render_snapshot.get_object(object_id);
-      const obj_vert_buffer = object_render_snapshot.get_obj_vert_buffer();
-      const obj_normals_buffer =
-        object_render_snapshot.get_obj_normals_buffer();
-      const obj_uvs_buffer = object_render_snapshot.get_obj_uvs_buffer();
-      if (!obj_vert_buffer) throw new Error("missing obj_vert_buffer");
-      if (!obj_normals_buffer) throw new Error("missing obj_normals_buffer");
-      if (!obj_uvs_buffer) throw new Error("missing obj_uvs_buffer");
-      gl.bindBuffer(gl.ARRAY_BUFFER, obj_vert_buffer);
+    if (game_state.obj_vert_buffer) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, game_state.obj_vert_buffer);
       gl.enableVertexAttribArray(attrib_id_obj_vertex);
       gl.vertexAttribPointer(
         attrib_id_obj_vertex, // Attribute in question
@@ -243,50 +231,34 @@ export const init_canvas = async (
         0, // No stride (steps between indexes)
         0, // initial offset
       );
-      gl.bindBuffer(gl.ARRAY_BUFFER, obj_normals_buffer);
-      gl.enableVertexAttribArray(attrib_id_obj_normals);
+    }
+    if (game_state.obj_colors_buffer) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, game_state.obj_colors_buffer);
+      gl.enableVertexAttribArray(attrib_id_obj_colors);
       gl.vertexAttribPointer(
-        attrib_id_obj_normals, // Attribute in question
+        attrib_id_obj_colors, // Attribute in question
         4, // Number of elements (vec4)
         gl.FLOAT, // Type of element
         false, // Normalize? Nope
         0, // No stride (steps between indexes)
         0, // initial offset
       );
-      gl.bindBuffer(gl.ARRAY_BUFFER, obj_uvs_buffer);
-      gl.enableVertexAttribArray(attrib_id_obj_uvs);
-      gl.vertexAttribPointer(
-        attrib_id_obj_uvs, // Attribute in question
-        2, // Number of elements (vec2)
-        gl.FLOAT, // Type of element
-        false, // Normalize? Nope
-        0, // No stride (steps between indexes)
-        0, // initial offset
-      );
-      const camera_transform_matrix = game_state.rust_state.world_to_camera();
-      gl.uniformMatrix4fv(
-        matrix_id_camera_transform,
-        false,
-        camera_transform_matrix.to_f64_array(),
-        0,
-        16,
-      );
-      const transform_matrix = object_render_snapshot.transform;
-      gl.uniformMatrix4fv(
-        matrix_id_transform,
-        false,
-        transform_matrix.to_f64_array(),
-        0,
-        16,
-      );
-      gl.uniform3fv(
-        id_camera_position,
-        Float32Array.from(game_state.rust_state.camera_position()),
-      );
-      gl.drawArrays(gl.TRIANGLES, 0, object_render_snapshot.num_points);
-      // Reset Attribute Array
-      gl.disableVertexAttribArray(attrib_id_obj_vertex);
     }
+    const camera_transform_matrix = game_state.rust_state.world_to_camera();
+    gl.uniformMatrix4fv(
+      matrix_id_camera_transform,
+      false,
+      camera_transform_matrix.to_f64_array(),
+      0,
+      16,
+    );
+    gl.uniform3fv(
+      id_camera_position,
+      Float32Array.from(game_state.rust_state.camera_position()),
+    );
+    gl.drawArrays(gl.TRIANGLES, 0, game_state.obj_num_points);
+    // Reset Attribute Array
+    gl.disableVertexAttribArray(attrib_id_obj_vertex);
 
     if (game_state.is_active) {
       frame_req = requestAnimationFrame(render);
@@ -294,6 +266,16 @@ export const init_canvas = async (
   };
 
   let frame_req = requestAnimationFrame(render);
+
+  const set_points = (mesh: rust.ColoredMesh) => {
+    const points = mesh.points();
+    const colors = mesh.colors();
+    gl.bindBuffer(gl.ARRAY_BUFFER, game_state.obj_vert_buffer!);
+    gl.bufferData(gl.ARRAY_BUFFER, points, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, game_state.obj_colors_buffer!);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+    game_state.obj_num_points = points.length / 4;
+  };
 
   window.addEventListener("keydown", key_down_listener);
   window.addEventListener("keyup", key_up_listener);
@@ -305,6 +287,7 @@ export const init_canvas = async (
 
   return {
     render,
+    set_mesh: set_points,
     cleanup() {
       // Remove all listeners, clean up webgl memory, etc.
       cancelAnimationFrame(frame_req);

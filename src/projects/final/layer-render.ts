@@ -9,8 +9,8 @@ export const init_layer_canvas = async (
   const gl = canvas.getContext("webgl2", { antialias: true })!;
   const rendering_program = init_shader_program(gl, vs_source, fs_source);
 
-  canvas.width = 1500;
-  canvas.height = 1500;
+  canvas.width = 750;
+  canvas.height = 750;
   gl.viewport(0, 0, canvas.width, canvas.height);
 
   const vertex_array_object = gl.createVertexArray();
@@ -79,7 +79,7 @@ export const init_layer_canvas = async (
   );
   const id_zoom_factor = gl.getUniformLocation(rendering_program, "zoomFactor");
 
-  const render = (snapshot_parameters: SnapshotParameters) => {
+  const render = (snapshot_parameters: SnapshotParameters): Uint8Array => {
     const num_vertices = 6;
 
     gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 1]);
@@ -110,8 +110,17 @@ export const init_layer_canvas = async (
     gl.drawArrays(gl.TRIANGLES, 0, num_vertices);
     // Reset Attribute Array
     gl.disableVertexAttribArray(attrib_id_vertex);
-    let pixel_buf = new Uint8Array(canvas.width * canvas.height * 4);
-    gl.readPixels(0, 0, 150, 150, gl.RGBA, gl.UNSIGNED_BYTE, pixel_buf);
+    const pixel_buf = new Uint8Array(canvas.width * canvas.height * 4);
+    gl.readPixels(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixel_buf,
+    );
+    return pixel_buf;
   };
 
   window.addEventListener("keydown", key_down_listener);

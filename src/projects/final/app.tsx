@@ -28,8 +28,12 @@ export interface GameState {
     input_d: boolean;
   };
   skybox_vert_buffer?: WebGLBuffer | null;
+  obj_vert_buffer?: WebGLBuffer | null;
+  obj_colors_buffer?: WebGLBuffer | null;
+  obj_num_points: number;
 }
 
+type UnPromise<T> = T extends Promise<infer R> ? R : never;
 interface Props {}
 
 export const Final = ({}: Props) => {
@@ -39,14 +43,14 @@ export const Final = ({}: Props) => {
   const layer_canvas_ref = useRef<HTMLCanvasElement>(null);
   const [rust_module, set_rust_module] = useState<rust.InitOutput | null>(null);
   const state_ref = useRef<GameState | null>(null);
-  const render_ref = useRef<() => void>();
+  const graphics_ref = useRef<UnPromise<ReturnType<typeof init_canvas>>>();
   const render_layer_ref =
-    useRef<(snapshot_parameters: SnapshotParameters) => void>();
+    useRef<(snapshot_parameters: SnapshotParameters) => Uint8Array>();
 
   const capture_screenshot = () => {
     const link = document.createElement("a");
     link.download = "maze-screenshot.png";
-    render_ref.current?.();
+    graphics_ref.current?.render();
     link.href = canvas_ref.current!.toDataURL();
     link.click();
   };
@@ -79,17 +83,20 @@ export const Final = ({}: Props) => {
         input_s: false,
         input_d: false,
       },
+      obj_num_points: 0,
     };
     state_ref.current = game_state;
     let canvas_cleanup = () => {};
-    init_canvas(canvas, game_state).then(({ cleanup, render }) => {
-      canvas_cleanup = cleanup;
-      render_ref.current = render;
+    init_canvas(canvas, game_state).then((graphics) => {
+      canvas_cleanup = graphics.cleanup;
+      graphics_ref.current = graphics;
     });
     init_layer_canvas(layer_canvas, game_state).then(({ cleanup, render }) => {
       canvas_cleanup = cleanup;
-      render(snapshot_parameters.current);
       render_layer_ref.current = render;
+      let pixels = render(snapshot_parameters.current);
+      let mesh = rust.layer_to_mesh(pixels);
+      graphics_ref.current?.set_mesh(mesh);
     });
     return () => {
       canvas_cleanup();
@@ -108,6 +115,23 @@ export const Final = ({}: Props) => {
     center_of_view: [0.0, 0.0, 0.0],
   });
 
+  const queued_update = useRef<null | number>(null);
+
+  const render = (snapshot_parameters: SnapshotParameters) => {
+    const render_layer = render_layer_ref.current;
+    if (render_layer) {
+      let pixels = render_layer(snapshot_parameters);
+      if (queued_update.current) {
+        clearTimeout(queued_update.current);
+      }
+      // queued_update.current = window.setTimeout(() => {
+      //   let mesh = rust.layer_to_mesh(pixels);
+      //   graphics_ref.current?.set_mesh(mesh);
+      //   graphics_ref.current?.render();
+      // }, 1000);
+    }
+  };
+
   return (
     <div class="demo">
       {error}
@@ -118,7 +142,7 @@ export const Final = ({}: Props) => {
         step={0.0001}
         on_change={(val) => {
           snapshot_parameters.current.julia_c.x = val;
-          render_layer_ref.current?.(snapshot_parameters.current);
+          render(snapshot_parameters.current);
         }}
       />
       <RangeInput
@@ -127,7 +151,7 @@ export const Final = ({}: Props) => {
         step={0.0001}
         on_change={(val) => {
           snapshot_parameters.current.julia_c.y = val;
-          render_layer_ref.current?.(snapshot_parameters.current);
+          render(snapshot_parameters.current);
         }}
       />
       <RangeInput
@@ -137,7 +161,7 @@ export const Final = ({}: Props) => {
         initial_value={0.5}
         on_change={(val) => {
           snapshot_parameters.current.zoom_factor = val;
-          render_layer_ref.current?.(snapshot_parameters.current);
+          render(snapshot_parameters.current);
         }}
       />
       <CoordinateInput
@@ -149,7 +173,7 @@ export const Final = ({}: Props) => {
           snapshot_parameters.current.center_of_view[0] = x;
           snapshot_parameters.current.center_of_view[1] = y;
           snapshot_parameters.current.center_of_view[2] = z;
-          render_layer_ref.current?.(snapshot_parameters.current);
+          render(snapshot_parameters.current);
         }}
       />
 

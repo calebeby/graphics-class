@@ -6,10 +6,7 @@ pub(crate) extern crate parry3d_f64 as parry3d;
 pub(crate) extern crate rand;
 pub(crate) extern crate rand_chacha;
 pub(crate) extern crate wasm_bindgen;
-mod bounding_box;
 mod face;
-mod load_obj;
-mod ray;
 
 use face::Face;
 use nalgebra::{
@@ -61,127 +58,12 @@ fn points_to_float32array(points: &[Vector3<f64>]) -> Vec<f32> {
         .collect()
 }
 
-#[derive(Clone)]
-#[wasm_bindgen]
-pub struct GameObject {
-    parent_index: usize,
-    faces: Vec<Face<f64>>,
-    obj_vert_buffer: Option<JsValue>,
-    obj_normals_buffer: Option<JsValue>,
-    obj_uvs_buffer: Option<JsValue>,
-    num_points: usize,
-    initial_transform: Matrix4<f64>,
-    dynamic_transform: Matrix4<f64>,
-}
-
-#[wasm_bindgen]
-impl GameObject {
-    #[wasm_bindgen(constructor)]
-    #[allow(clippy::new_without_default)]
-    pub fn new(obj_text: String, parent_index: usize, initial_transform: TransformMatrix) -> Self {
-        let faces = load_obj::load_obj(&obj_text);
-
-        let num_points = faces
-            .iter()
-            .fold(0, |count, face| count + (face.break_into_triangles().len()));
-
-        Self {
-            parent_index,
-            faces,
-            obj_vert_buffer: None,
-            obj_normals_buffer: None,
-            obj_uvs_buffer: None,
-            num_points,
-            initial_transform: initial_transform.0,
-            dynamic_transform: Matrix4::identity(),
-        }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn obj_vert_buffer(&self) -> JsValue {
-        self.obj_vert_buffer.clone().unwrap_or(JsValue::UNDEFINED)
-    }
-
-    #[wasm_bindgen(setter)]
-    pub fn set_obj_vert_buffer(&mut self, obj_vert_buffer: JsValue) {
-        self.obj_vert_buffer = Some(obj_vert_buffer);
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn obj_normals_buffer(&self) -> JsValue {
-        self.obj_normals_buffer
-            .clone()
-            .unwrap_or(JsValue::UNDEFINED)
-    }
-
-    #[wasm_bindgen(setter)]
-    pub fn set_obj_normals_buffer(&mut self, obj_normals_buffer: JsValue) {
-        self.obj_normals_buffer = Some(obj_normals_buffer);
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn obj_uvs_buffer(&self) -> JsValue {
-        self.obj_uvs_buffer.clone().unwrap_or(JsValue::UNDEFINED)
-    }
-
-    #[wasm_bindgen(setter)]
-    pub fn set_obj_uvs_buffer(&mut self, obj_uvs_buffer: JsValue) {
-        self.obj_uvs_buffer = Some(obj_uvs_buffer);
-    }
-
-    pub fn points_to_float32array(&self) -> Vec<f32> {
-        points_to_float32array(
-            &self
-                .faces
-                .iter()
-                .flat_map(|face| {
-                    face.break_into_triangles()
-                        .iter()
-                        .map(|p| p.coords)
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>(),
-        )
-    }
-
-    pub fn normals_to_float32array(&self) -> Vec<f32> {
-        points_to_float32array(
-            &self
-                .faces
-                .iter()
-                .flat_map(|face| {
-                    face.break_into_triangles()
-                        .into_iter()
-                        .map(move |_triangle| face.normal().into_inner())
-                })
-                .collect::<Vec<_>>(),
-        )
-    }
-
-    pub fn uvs_to_float32array(&self) -> Vec<f32> {
-        self.faces
-            .iter()
-            .flat_map(|face| {
-                face.break_into_uv_triangles()
-                    .iter()
-                    .flat_map(|triangle| [triangle.x as f32, triangle.y as f32])
-                    .collect::<Vec<_>>()
-            })
-            .collect()
-    }
-
-    fn get_transform_matrix(&self, parent_transform: &Matrix4<f64>) -> Matrix4<f64> {
-        parent_transform * self.initial_transform * self.dynamic_transform
-    }
-}
-
 #[wasm_bindgen]
 pub struct GameState {
     camera_position: Point3<f64>,
     camera_direction: UnitVector3<f64>,
     camera_velocity: Vector3<f64>,
     aspect_ratio: f64,
-    game_objects: Vec<GameObject>,
 }
 
 /// A little wrapper around the nalgebra matrix4 class, for JS use,
@@ -210,44 +92,6 @@ impl TransformMatrix {
 }
 
 #[wasm_bindgen]
-#[derive(Clone)]
-pub struct ObjectRenderSnapshot {
-    obj_vert_buffer: JsValue,
-    obj_normals_buffer: JsValue,
-    obj_uvs_buffer: JsValue,
-    pub num_points: usize,
-    pub transform: TransformMatrix,
-}
-
-#[wasm_bindgen]
-impl ObjectRenderSnapshot {
-    pub fn get_obj_vert_buffer(&self) -> JsValue {
-        self.obj_vert_buffer.clone()
-    }
-    pub fn get_obj_normals_buffer(&self) -> JsValue {
-        self.obj_normals_buffer.clone()
-    }
-    pub fn get_obj_uvs_buffer(&self) -> JsValue {
-        self.obj_uvs_buffer.clone()
-    }
-}
-
-#[wasm_bindgen]
-pub struct RenderSnapshot {
-    objects: Vec<ObjectRenderSnapshot>,
-}
-
-#[wasm_bindgen]
-impl RenderSnapshot {
-    pub fn object_ids(&self) -> Vec<usize> {
-        self.objects.iter().enumerate().map(|(i, _)| i).collect()
-    }
-    pub fn get_object(&self, object_index: usize) -> ObjectRenderSnapshot {
-        self.objects[object_index].clone()
-    }
-}
-
-#[wasm_bindgen]
 impl GameState {
     #[wasm_bindgen(constructor)]
     #[allow(clippy::new_without_default)]
@@ -255,58 +99,14 @@ impl GameState {
         console_error_panic_hook::set_once();
         Self {
             aspect_ratio: 1.0,
-            camera_position: point![3.0, 0.0, 0.0],
+            camera_position: point![0.0, -10.0, 0.0],
             camera_direction: UnitVector3::new_normalize(vector![-1.0, 0.0, 0.0]),
             camera_velocity: Vector3::zeros(),
-            game_objects: vec![],
         }
     }
 
     fn up(&self) -> UnitVector3<f64> {
         Unit::new_normalize(vector![0.0, 1.0, 0.0])
-    }
-
-    #[wasm_bindgen]
-    pub fn get_render_snapshot(&self) -> RenderSnapshot {
-        let mut snapshot_objects: Vec<ObjectRenderSnapshot> = self
-            .game_objects
-            .iter()
-            .map(|game_object| ObjectRenderSnapshot {
-                obj_vert_buffer: game_object.obj_vert_buffer(),
-                obj_normals_buffer: game_object.obj_normals_buffer(),
-                obj_uvs_buffer: game_object.obj_uvs_buffer(),
-                num_points: game_object.num_points,
-                // Just a placeholder until we go back and accumulate the parent transforms below
-                transform: TransformMatrix(game_object.initial_transform),
-            })
-            .collect();
-
-        for (i, game_object) in self.game_objects.iter().enumerate() {
-            let parent_index = game_object.parent_index;
-            assert!(parent_index <= i);
-            // Since we are iterating through in order,
-            // we will have already calculated the parent's transform,
-            // and can pass it into get_transform_matrix
-
-            // If parent index is itself, that means it has no parent,
-            // so we'll pass the identity matrix as the parent.
-            let identity = Matrix4::identity();
-            snapshot_objects[i].transform =
-                TransformMatrix(game_object.get_transform_matrix(if parent_index == i {
-                    &identity
-                } else {
-                    &snapshot_objects[game_object.parent_index].transform.0
-                }))
-        }
-
-        RenderSnapshot {
-            objects: snapshot_objects,
-        }
-    }
-
-    #[wasm_bindgen]
-    pub fn add_game_object(&mut self, game_object: GameObject) {
-        self.game_objects.push(game_object);
     }
 
     // It would be a good idea to have this accept the arguments as a struct,
@@ -477,4 +277,214 @@ pub fn generate_skybox_points() -> Vec<f32> {
         .iter()
         .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
         .collect()
+}
+
+#[wasm_bindgen]
+pub struct ColoredMesh {
+    points: Vec<f32>,
+    colors: Vec<f32>,
+}
+
+#[wasm_bindgen]
+impl ColoredMesh {
+    #[inline]
+    pub fn points(&self) -> Vec<f32> {
+        self.points.clone()
+    }
+    #[inline]
+    pub fn colors(&self) -> Vec<f32> {
+        self.colors.clone()
+    }
+}
+
+#[wasm_bindgen]
+pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
+    const NUM_CHANNELS: usize = 4; // R, G, B, A
+    let dimension = ((layer.len() / NUM_CHANNELS) as f64).sqrt() as usize;
+    assert_eq!(dimension * dimension * NUM_CHANNELS, layer.len());
+    type Color = Vector3<f64>;
+    let mut faces_with_colors: Vec<(Face<f64>, Color)> = vec![];
+
+    let scale = 100.0 / (dimension as f64);
+    const LAYER_HEIGHT: f64 = 1.0;
+    let front_right_bottom = Point3::new(0.5, -0.5 * LAYER_HEIGHT, 0.5);
+    let front_left_bottom = Point3::new(-0.5, -0.5 * LAYER_HEIGHT, 0.5);
+    let front_right_top = Point3::new(0.5, 0.5 * LAYER_HEIGHT, 0.5);
+    let front_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, 0.5);
+
+    let back_right_bottom = Point3::new(0.5, -0.5 * LAYER_HEIGHT, -0.5);
+    let back_left_bottom = Point3::new(-0.5, -0.5 * LAYER_HEIGHT, -0.5);
+    let back_right_top = Point3::new(0.5, 0.5 * LAYER_HEIGHT, -0.5);
+    let back_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, -0.5);
+    let centering_offset = (dimension as f64) / 2.0;
+
+    let color_front_back = vector![0.0, 0.0, 0.5];
+    let color_top_bottom = vector![0.0, 0.0, 0.5];
+    let color_left_right = vector![0.0, 0.0, 0.5];
+
+    const LAYER_LIMIT: u8 = 50;
+
+    #[inline(always)]
+    fn get_pixel(
+        pixels_layers: &[Vec<bool>],
+        dimension: usize,
+        i: usize,
+        layer: usize,
+        offset_rows: isize,
+        offset_cols: isize,
+        offset_layers: isize,
+    ) -> bool {
+        let row = (i / dimension) as isize;
+        let col = (i % dimension) as isize;
+        let new_row = row + offset_rows;
+        let new_col = col + offset_cols;
+        let new_layer = layer as isize + offset_layers;
+
+        if new_layer < 0 {
+            return true;
+        }
+        if new_row < 0
+            || new_col < 0
+            || new_row >= dimension as isize
+            || new_col >= dimension as isize
+            || new_layer >= LAYER_LIMIT as isize
+        {
+            false
+        } else {
+            pixels_layers[new_layer as usize][dimension * new_row as usize + new_col as usize]
+        }
+    }
+    let pixel_layers: Vec<Vec<bool>> = (0..LAYER_LIMIT)
+        .map(|n| {
+            layer
+                .chunks_exact(4)
+                .map(|pixel| {
+                    let red = pixel[0];
+                    red > 255 / LAYER_LIMIT * n
+                })
+                .collect()
+        })
+        .collect();
+    for (n, pixel_layer) in pixel_layers.iter().enumerate() {
+        for (i, &pixel_filled) in pixel_layer.iter().enumerate() {
+            let row = i / dimension;
+            let col = i % dimension;
+            let offset = vector![
+                row as f64 - centering_offset,
+                -(n as f64) * LAYER_HEIGHT,
+                col as f64 - centering_offset
+            ];
+            let layer_color = vector![n as f64, n as f64, n as f64] * 1.0 / (LAYER_LIMIT as f64);
+            if pixel_filled {
+                let front_right_bottom = (front_right_bottom + offset) * scale;
+                let front_left_bottom = (front_left_bottom + offset) * scale;
+                let front_right_top = (front_right_top + offset) * scale;
+                let front_left_top = (front_left_top + offset) * scale;
+
+                let back_right_bottom = (back_right_bottom + offset) * scale;
+                let back_left_bottom = (back_left_bottom + offset) * scale;
+                let back_right_top = (back_right_top + offset) * scale;
+                let back_left_top = (back_left_top + offset) * scale;
+
+                if !get_pixel(&pixel_layers, dimension, i, n, 0, 1, 0) {
+                    let front_face = (
+                        Face::new(vec![
+                            front_right_top,
+                            front_right_bottom,
+                            front_left_bottom,
+                            front_left_top,
+                        ]),
+                        color_front_back + layer_color,
+                    );
+
+                    faces_with_colors.push(front_face);
+                }
+                if !get_pixel(&pixel_layers, dimension, i, n, 0, -1, 0) {
+                    let back_face = (
+                        Face::new(vec![
+                            back_right_top,
+                            back_left_top,
+                            back_left_bottom,
+                            back_right_bottom,
+                        ]),
+                        color_front_back + layer_color,
+                    );
+                    faces_with_colors.push(back_face);
+                }
+                if !get_pixel(&pixel_layers, dimension, i, n, -1, 0, 0) {
+                    let left_face = (
+                        Face::new(vec![
+                            front_left_top,
+                            front_left_bottom,
+                            back_left_bottom,
+                            back_left_top,
+                        ]),
+                        color_left_right + layer_color,
+                    );
+                    faces_with_colors.push(left_face);
+                }
+                if !get_pixel(&pixel_layers, dimension, i, n, 1, 0, 0) {
+                    let right_face = (
+                        Face::new(vec![
+                            front_right_top,
+                            back_right_top,
+                            back_right_bottom,
+                            front_right_bottom,
+                        ]),
+                        color_left_right + layer_color,
+                    );
+                    faces_with_colors.push(right_face);
+                }
+                if !get_pixel(&pixel_layers, dimension, i, n, 0, 0, -1) {
+                    let top_face = (
+                        Face::new(vec![
+                            front_right_top,
+                            front_left_top,
+                            back_left_top,
+                            back_right_top,
+                        ]),
+                        color_top_bottom + layer_color,
+                    );
+                    faces_with_colors.push(top_face);
+                }
+                if !get_pixel(&pixel_layers, dimension, i, n, 0, 0, 1) {
+                    let bottom_face = (
+                        Face::new(vec![
+                            front_right_bottom,
+                            back_right_bottom,
+                            back_left_bottom,
+                            front_left_bottom,
+                        ]),
+                        color_top_bottom + layer_color,
+                    );
+                    faces_with_colors.push(bottom_face);
+                }
+            }
+        }
+    }
+    let points = points_to_float32array(
+        &faces_with_colors
+            .iter()
+            .flat_map(|(face, _color)| {
+                face.break_into_triangles()
+                    .iter()
+                    .map(|p| p.coords)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    let colors = points_to_float32array(
+        &faces_with_colors
+            .iter()
+            .flat_map(|(face, color)| {
+                face.break_into_triangles()
+                    .iter()
+                    .map(|_| *color)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    ColoredMesh { points, colors }
 }
