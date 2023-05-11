@@ -115,20 +115,17 @@ export const Final = ({}: Props) => {
     center_of_view: [0.0, 0.0, 0.0],
   });
 
-  const queued_update = useRef<null | number>(null);
+  const update = useRef<null | (() => void)>(null);
 
   const render = (snapshot_parameters: SnapshotParameters) => {
     const render_layer = render_layer_ref.current;
     if (render_layer) {
       let pixels = render_layer(snapshot_parameters);
-      if (queued_update.current) {
-        clearTimeout(queued_update.current);
-      }
-      // queued_update.current = window.setTimeout(() => {
-      //   let mesh = rust.layer_to_mesh(pixels);
-      //   graphics_ref.current?.set_mesh(mesh);
-      //   graphics_ref.current?.render();
-      // }, 1000);
+      update.current = () => {
+        let mesh = rust.layer_to_mesh(pixels);
+        graphics_ref.current?.set_mesh(mesh);
+        graphics_ref.current?.render();
+      };
     }
   };
 
@@ -155,15 +152,16 @@ export const Final = ({}: Props) => {
         }}
       />
       <RangeInput
-        min={0.5}
-        max={10000}
+        min={1}
+        max={10}
         step={0.01}
-        initial_value={0.5}
+        initial_value={1.5}
         on_change={(val) => {
-          snapshot_parameters.current.zoom_factor = val;
+          snapshot_parameters.current.zoom_factor = 0.1 * Math.exp(val);
           render(snapshot_parameters.current);
         }}
       />
+      <button onClick={() => update.current?.()}>Update</button>
       <CoordinateInput
         name="Center of View"
         min={-2}

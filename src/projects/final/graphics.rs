@@ -318,9 +318,9 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
     let back_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, -0.5);
     let centering_offset = (dimension as f64) / 2.0;
 
-    let color_front_back = vector![0.0, 0.0, 0.5];
-    let color_top_bottom = vector![0.0, 0.0, 0.5];
-    let color_left_right = vector![0.0, 0.0, 0.5];
+    let color_front_back = vector![0.0, 0.0, 0.2];
+    let color_top_bottom = vector![0.0, 0.0, 0.2];
+    let color_left_right = vector![0.0, 0.0, 0.2];
 
     const LAYER_LIMIT: u8 = 50;
 
@@ -371,10 +371,11 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
             let col = i % dimension;
             let offset = vector![
                 row as f64 - centering_offset,
-                -(n as f64) * LAYER_HEIGHT,
+                (n as f64) * LAYER_HEIGHT,
                 col as f64 - centering_offset
             ];
-            let layer_color = vector![n as f64, n as f64, n as f64] * 1.0 / (LAYER_LIMIT as f64);
+            let layer_color =
+                vector![n as f64 / 2.0, n as f64 / 2.0, n as f64] * 1.5 / (LAYER_LIMIT as f64);
             if pixel_filled {
                 let front_right_bottom = (front_right_bottom + offset) * scale;
                 let front_left_bottom = (front_left_bottom + offset) * scale;
@@ -435,7 +436,7 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
                     );
                     faces_with_colors.push(right_face);
                 }
-                if !get_pixel(&pixel_layers, dimension, i, n, 0, 0, -1) {
+                if !get_pixel(&pixel_layers, dimension, i, n, 0, 0, 1) {
                     let top_face = (
                         Face::new(vec![
                             front_right_top,
@@ -447,7 +448,7 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
                     );
                     faces_with_colors.push(top_face);
                 }
-                if !get_pixel(&pixel_layers, dimension, i, n, 0, 0, 1) {
+                if !get_pixel(&pixel_layers, dimension, i, n, 0, 0, -1) {
                     let bottom_face = (
                         Face::new(vec![
                             front_right_bottom,
