@@ -164,6 +164,8 @@ export const Final = ({}: Props) => {
         graphics_ref.current?.set_mesh(mesh);
         graphics_ref.current?.render();
       };
+      // Render again for the visual update in the top view
+      render_layer(snapshot_parameters);
     }
   };
 
@@ -209,6 +211,8 @@ export const Final = ({}: Props) => {
         step={0.001}
         on_change={(val) => {
           snapshot_parameters.current.min_parameter = val;
+          // Set the y for the sake of previewing
+          snapshot_parameters.current.julia_c.y = val;
           render(snapshot_parameters.current);
         }}
       />
@@ -219,6 +223,8 @@ export const Final = ({}: Props) => {
         step={0.001}
         on_change={(val) => {
           snapshot_parameters.current.max_parameter = val;
+          // Set the y for the sake of previewing
+          snapshot_parameters.current.julia_c.y = val;
           render(snapshot_parameters.current);
         }}
       />

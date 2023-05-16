@@ -349,7 +349,16 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
         }
     }
     for (n, pixel_layer) in pixel_layers.iter().enumerate() {
-        let layer_color = (n as f64) * vector![0.0, 1.0, 0.0] / (pixel_layers.len() as f64);
+        console_log!("{}%", (n as f64) / (pixel_layers.len() as f64) * 100.0);
+        let t = n as f64;
+        // let layer_color = vector![0.5, t.sin() * 0.5, t.cos() * 0.5];
+
+        let layer_color = vector![
+            (-(0.025 * t).cos() + 1.0) / 2.0,
+            (-(0.08 * t).cos() + 1.0) / 2.0,
+            (-(0.12 * t).cos() + 1.0) / 2.0
+        ];
+        // let layer_color = (n as f64) * vector![0.0, 0.5, 0.5] / (pixel_layers.len() as f64);
         for (i, &pixel_filled) in pixel_layer.iter().enumerate() {
             let row = i / dimension;
             let col = i % dimension;

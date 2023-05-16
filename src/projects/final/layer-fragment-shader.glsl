@@ -12,7 +12,7 @@ int mode = 1;
 
 out vec4 color;
 
-int max_n = 500;
+int max_n = 50;
 
 int mandel_potential() {
   vec2 z = c.xy; // x,y starting point in complex plane
