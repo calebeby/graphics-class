@@ -20,6 +20,30 @@ export interface SnapshotParameters {
   max_parameter: number;
 }
 
+const default_snapshot_parameters: SnapshotParameters = {
+  julia_c: {
+    x: 0.0,
+    y: 0.0,
+  },
+  zoom_factor: 1.0,
+  center_of_view: [0.0, 0.0, 0.0],
+  map_z_to_n: false,
+  layer_dimensions: 500,
+  min_parameter: -0.1,
+  max_parameter: 0.1,
+};
+
+const get_snapshot_params_from_url = (): SnapshotParameters | null => {
+  try {
+    const url = new URL(window.location.href);
+    const params = url.searchParams.get("params");
+    if (!params) return null;
+    return JSON.parse(params);
+  } catch {
+    return null;
+  }
+};
+
 export interface GameState {
   rust_state: rust.GameState;
   is_active: boolean;
@@ -53,7 +77,7 @@ export const Final = ({}: Props) => {
 
   const capture_screenshot = () => {
     const link = document.createElement("a");
-    link.download = "maze-screenshot.png";
+    link.download = "fractal-screenshot.png";
     graphics_ref.current?.render();
     link.href = canvas_ref.current!.toDataURL();
     link.click();
@@ -95,13 +119,18 @@ export const Final = ({}: Props) => {
       canvas_cleanup = graphics.cleanup;
       graphics_ref.current = graphics;
     });
-    init_layer_canvas(layer_canvas, game_state).then(({ cleanup, render }) => {
-      canvas_cleanup = cleanup;
-      render_layer_ref.current = render;
-      let pixels = render(snapshot_parameters.current);
-      let mesh = rust.layer_to_mesh_n_to_z(pixels);
-      graphics_ref.current?.set_mesh(mesh);
-    });
+    init_layer_canvas(layer_canvas, game_state).then(
+      ({ cleanup, render: render_layer }) => {
+        canvas_cleanup = cleanup;
+        render_layer_ref.current = render_layer;
+        render_2d(snapshot_parameters.current);
+        requestIdleCallback(() => {
+          setTimeout(() => {
+            update_3d.current?.();
+          }, 100);
+        });
+      },
+    );
     return () => {
       canvas_cleanup();
       try {
@@ -110,27 +139,22 @@ export const Final = ({}: Props) => {
     };
   }, [rust_module]);
 
-  const snapshot_parameters = useRef<SnapshotParameters>({
-    julia_c: {
-      x: 0.0,
-      y: 0.0,
-    },
-    zoom_factor: 1.0,
-    center_of_view: [0.0, 0.0, 0.0],
-    map_z_to_n: false,
-    layer_dimensions: 500,
-    min_parameter: 0,
-    max_parameter: 1,
-  });
+  const snapshot_parameters = useRef<SnapshotParameters>(
+    get_snapshot_params_from_url() || default_snapshot_parameters,
+  );
 
-  const update = useRef<null | (() => void)>(null);
+  const update_3d = useRef<null | (() => void)>(null);
 
-  const render = (snapshot_parameters: SnapshotParameters) => {
+  const render_2d = (snapshot_parameters: SnapshotParameters) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("params", JSON.stringify(snapshot_parameters));
+    window.history.replaceState({}, "", url);
     const render_layer = render_layer_ref.current;
     if (render_layer) {
       // Render once for the visual update
       render_layer(snapshot_parameters);
-      update.current = () => {
+      console.log(snapshot_parameters);
+      update_3d.current = () => {
         let mesh;
         if (snapshot_parameters.map_z_to_n) {
           const pixels = render_layer(snapshot_parameters);
@@ -154,7 +178,6 @@ export const Final = ({}: Props) => {
                 y: i * step + min_val,
               },
             };
-            console.log(modified_params.julia_c);
             const pixels = render_layer(modified_params);
             pixels_layers_buf.set(pixels, layer_size * i);
           }
@@ -178,9 +201,10 @@ export const Final = ({}: Props) => {
         min={-2}
         max={2}
         step={0.0001}
+        initial_value={snapshot_parameters.current.julia_c.x}
         on_change={(val) => {
           snapshot_parameters.current.julia_c.x = val;
-          render(snapshot_parameters.current);
+          render_2d(snapshot_parameters.current);
         }}
       />
       <RangeInput
@@ -188,9 +212,10 @@ export const Final = ({}: Props) => {
         min={-2}
         max={2}
         step={0.0001}
+        initial_value={snapshot_parameters.current.julia_c.y}
         on_change={(val) => {
           snapshot_parameters.current.julia_c.y = val;
-          render(snapshot_parameters.current);
+          render_2d(snapshot_parameters.current);
         }}
       />
       <RangeInput
@@ -198,10 +223,10 @@ export const Final = ({}: Props) => {
         min={1}
         max={10}
         step={0.01}
-        initial_value={1.5}
+        initial_value={Math.log(snapshot_parameters.current.zoom_factor / 0.1)}
         on_change={(val) => {
           snapshot_parameters.current.zoom_factor = 0.1 * Math.exp(val);
-          render(snapshot_parameters.current);
+          render_2d(snapshot_parameters.current);
         }}
       />
       <RangeInput
@@ -209,11 +234,12 @@ export const Final = ({}: Props) => {
         min={-2}
         max={2}
         step={0.001}
+        initial_value={snapshot_parameters.current.min_parameter}
         on_change={(val) => {
           snapshot_parameters.current.min_parameter = val;
           // Set the y for the sake of previewing
           snapshot_parameters.current.julia_c.y = val;
-          render(snapshot_parameters.current);
+          render_2d(snapshot_parameters.current);
         }}
       />
       <RangeInput
@@ -221,11 +247,12 @@ export const Final = ({}: Props) => {
         min={-2}
         max={2}
         step={0.001}
+        initial_value={snapshot_parameters.current.max_parameter}
         on_change={(val) => {
           snapshot_parameters.current.max_parameter = val;
           // Set the y for the sake of previewing
           snapshot_parameters.current.julia_c.y = val;
-          render(snapshot_parameters.current);
+          render_2d(snapshot_parameters.current);
         }}
       />
       <label>
@@ -235,7 +262,7 @@ export const Final = ({}: Props) => {
           checked={snapshot_parameters.current.map_z_to_n}
           onChange={(e) => {
             snapshot_parameters.current.map_z_to_n = e.currentTarget.checked;
-            render(snapshot_parameters.current);
+            render_2d(snapshot_parameters.current);
           }}
         />
       </label>
@@ -244,14 +271,13 @@ export const Final = ({}: Props) => {
         min={-2}
         max={2}
         step={0.0001}
-        on_change={(x, y, z) => {
-          snapshot_parameters.current.center_of_view[0] = x;
-          snapshot_parameters.current.center_of_view[1] = y;
-          snapshot_parameters.current.center_of_view[2] = z;
-          render(snapshot_parameters.current);
+        initial_value={snapshot_parameters.current.center_of_view}
+        on_change={(coords) => {
+          snapshot_parameters.current.center_of_view = coords;
+          render_2d(snapshot_parameters.current);
         }}
       />
-      <button onClick={() => update.current?.()}>Update</button>
+      <button onClick={() => update_3d.current?.()}>Update</button>
 
       <canvas ref={canvas_ref}></canvas>
       <button onClick={capture_screenshot}>Download screenshot</button>
@@ -261,12 +287,12 @@ export const Final = ({}: Props) => {
 
 const RangeInput = ({
   on_change,
-  initial_value = 0,
+  initial_value,
   name,
   label,
   ...props
 }: {
-  initial_value?: number;
+  initial_value: number;
   label: string;
   on_change: (val: number) => void;
 } & JSX.IntrinsicElements["input"]) => {
@@ -298,18 +324,20 @@ const CoordinateInput = ({
   min,
   max,
   step,
+  initial_value,
 }: {
-  on_change: (x: number, y: number, z: number) => void;
+  on_change: (coords: [x: number, y: number, z: number]) => void;
+  initial_value: [x: number, y: number, z: number];
   name: string;
   min: number;
   max: number;
   step: number;
 }) => {
-  const [x, set_x] = useState(0);
-  const [y, set_y] = useState(0);
-  const [z, set_z] = useState(0);
+  const [x, set_x] = useState(initial_value[0]);
+  const [y, set_y] = useState(initial_value[1]);
+  const [z, set_z] = useState(initial_value[2]);
   useEffect(() => {
-    on_change(x, y, z);
+    on_change([x, y, z]);
   }, [x, y, z]);
   return (
     <>
