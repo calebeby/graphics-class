@@ -14,6 +14,10 @@ export interface SnapshotParameters {
   };
   zoom_factor: number;
   center_of_view: [x: number, y: number, z: number];
+  map_z_to_n: boolean;
+  layer_dimensions: number;
+  min_parameter: number;
+  max_parameter: number;
 }
 
 export interface GameState {
@@ -95,7 +99,7 @@ export const Final = ({}: Props) => {
       canvas_cleanup = cleanup;
       render_layer_ref.current = render;
       let pixels = render(snapshot_parameters.current);
-      let mesh = rust.layer_to_mesh(pixels);
+      let mesh = rust.layer_to_mesh_n_to_z(pixels);
       graphics_ref.current?.set_mesh(mesh);
     });
     return () => {
@@ -113,6 +117,10 @@ export const Final = ({}: Props) => {
     },
     zoom_factor: 1.0,
     center_of_view: [0.0, 0.0, 0.0],
+    map_z_to_n: false,
+    layer_dimensions: 500,
+    min_parameter: 0,
+    max_parameter: 1,
   });
 
   const update = useRef<null | (() => void)>(null);
@@ -120,9 +128,39 @@ export const Final = ({}: Props) => {
   const render = (snapshot_parameters: SnapshotParameters) => {
     const render_layer = render_layer_ref.current;
     if (render_layer) {
-      let pixels = render_layer(snapshot_parameters);
+      // Render once for the visual update
+      render_layer(snapshot_parameters);
       update.current = () => {
-        let mesh = rust.layer_to_mesh(pixels);
+        let mesh;
+        if (snapshot_parameters.map_z_to_n) {
+          const pixels = render_layer(snapshot_parameters);
+          mesh = rust.layer_to_mesh_n_to_z(pixels);
+        } else {
+          const min_val = snapshot_parameters.min_parameter;
+          const max_val = snapshot_parameters.max_parameter;
+          const num_layers = 200;
+          const step = (max_val - min_val) / num_layers;
+          const layer_size =
+            // 4 for four channels (R, G, B, A)
+            4 *
+            snapshot_parameters.layer_dimensions *
+            snapshot_parameters.layer_dimensions;
+          const pixels_layers_buf = new Uint8Array(num_layers * layer_size);
+          for (let i = 0; i < num_layers; i++) {
+            const modified_params: SnapshotParameters = {
+              ...snapshot_parameters,
+              julia_c: {
+                x: snapshot_parameters.julia_c.x,
+                y: i * step + min_val,
+              },
+            };
+            console.log(modified_params.julia_c);
+            const pixels = render_layer(modified_params);
+            pixels_layers_buf.set(pixels, layer_size * i);
+          }
+          // To pass it into rust, cannot be a 2d array, must be 1d
+          mesh = rust.layers_to_mesh(pixels_layers_buf, num_layers);
+        }
         graphics_ref.current?.set_mesh(mesh);
         graphics_ref.current?.render();
       };
@@ -134,6 +172,7 @@ export const Final = ({}: Props) => {
       {error}
       <canvas class="layer-canvas" ref={layer_canvas_ref}></canvas>
       <RangeInput
+        label="Julia C (Re)"
         min={-2}
         max={2}
         step={0.0001}
@@ -143,6 +182,7 @@ export const Final = ({}: Props) => {
         }}
       />
       <RangeInput
+        label="Julia C (Im)"
         min={-2}
         max={2}
         step={0.0001}
@@ -152,6 +192,7 @@ export const Final = ({}: Props) => {
         }}
       />
       <RangeInput
+        label="Zoom"
         min={1}
         max={10}
         step={0.01}
@@ -161,7 +202,37 @@ export const Final = ({}: Props) => {
           render(snapshot_parameters.current);
         }}
       />
-      <button onClick={() => update.current?.()}>Update</button>
+      <RangeInput
+        label="Parameter min"
+        min={-2}
+        max={2}
+        step={0.001}
+        on_change={(val) => {
+          snapshot_parameters.current.min_parameter = val;
+          render(snapshot_parameters.current);
+        }}
+      />
+      <RangeInput
+        label="Parameter max"
+        min={-2}
+        max={2}
+        step={0.001}
+        on_change={(val) => {
+          snapshot_parameters.current.max_parameter = val;
+          render(snapshot_parameters.current);
+        }}
+      />
+      <label>
+        Map Z to N
+        <input
+          type="checkbox"
+          checked={snapshot_parameters.current.map_z_to_n}
+          onChange={(e) => {
+            snapshot_parameters.current.map_z_to_n = e.currentTarget.checked;
+            render(snapshot_parameters.current);
+          }}
+        />
+      </label>
       <CoordinateInput
         name="Center of View"
         min={-2}
@@ -174,6 +245,7 @@ export const Final = ({}: Props) => {
           render(snapshot_parameters.current);
         }}
       />
+      <button onClick={() => update.current?.()}>Update</button>
 
       <canvas ref={canvas_ref}></canvas>
       <button onClick={capture_screenshot}>Download screenshot</button>
@@ -184,9 +256,12 @@ export const Final = ({}: Props) => {
 const RangeInput = ({
   on_change,
   initial_value = 0,
+  name,
+  label,
   ...props
 }: {
   initial_value?: number;
+  label: string;
   on_change: (val: number) => void;
 } & JSX.IntrinsicElements["input"]) => {
   const [val, set_val] = useState(initial_value);
@@ -194,12 +269,20 @@ const RangeInput = ({
     on_change(val);
   }, [val]);
   return (
-    <input
-      type="range"
-      value={val}
-      {...props}
-      onInput={(e) => set_val(e.currentTarget.valueAsNumber)}
-    />
+    <label>
+      {label}
+      <input
+        type="range"
+        value={val}
+        {...props}
+        onInput={(e) => set_val(e.currentTarget.valueAsNumber)}
+      />
+      <input
+        type="number"
+        value={val}
+        onInput={(e) => set_val(e.currentTarget.valueAsNumber)}
+      />
+    </label>
   );
 };
 

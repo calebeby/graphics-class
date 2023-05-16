@@ -297,11 +297,7 @@ impl ColoredMesh {
     }
 }
 
-#[wasm_bindgen]
-pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
-    const NUM_CHANNELS: usize = 4; // R, G, B, A
-    let dimension = ((layer.len() / NUM_CHANNELS) as f64).sqrt() as usize;
-    assert_eq!(dimension * dimension * NUM_CHANNELS, layer.len());
+pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -> ColoredMesh {
     type Color = Vector3<f64>;
     let mut faces_with_colors: Vec<(Face<f64>, Color)> = vec![];
 
@@ -318,11 +314,9 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
     let back_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, -0.5);
     let centering_offset = (dimension as f64) / 2.0;
 
-    let color_front_back = vector![0.0, 0.0, 0.2];
-    let color_top_bottom = vector![0.0, 0.0, 0.2];
-    let color_left_right = vector![0.0, 0.0, 0.2];
-
-    const LAYER_LIMIT: u8 = 50;
+    let color_front_back = vector![0.0, 0.0, 0.0];
+    let color_top_bottom = vector![0.0, 0.0, 0.0];
+    let color_left_right = vector![0.0, 0.0, 0.0];
 
     #[inline(always)]
     fn get_pixel(
@@ -347,25 +341,15 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
             || new_col < 0
             || new_row >= dimension as isize
             || new_col >= dimension as isize
-            || new_layer >= LAYER_LIMIT as isize
+            || new_layer >= pixels_layers.len() as isize
         {
             false
         } else {
             pixels_layers[new_layer as usize][dimension * new_row as usize + new_col as usize]
         }
     }
-    let pixel_layers: Vec<Vec<bool>> = (0..LAYER_LIMIT)
-        .map(|n| {
-            layer
-                .chunks_exact(4)
-                .map(|pixel| {
-                    let red = pixel[0];
-                    red > 255 / LAYER_LIMIT * n
-                })
-                .collect()
-        })
-        .collect();
     for (n, pixel_layer) in pixel_layers.iter().enumerate() {
+        let layer_color = (n as f64) * vector![0.0, 1.0, 0.0] / (pixel_layers.len() as f64);
         for (i, &pixel_filled) in pixel_layer.iter().enumerate() {
             let row = i / dimension;
             let col = i % dimension;
@@ -374,8 +358,6 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
                 (n as f64) * LAYER_HEIGHT,
                 col as f64 - centering_offset
             ];
-            let layer_color =
-                vector![n as f64 / 2.0, n as f64 / 2.0, n as f64] * 1.5 / (LAYER_LIMIT as f64);
             if pixel_filled {
                 let front_right_bottom = (front_right_bottom + offset) * scale;
                 let front_left_bottom = (front_left_bottom + offset) * scale;
@@ -387,7 +369,7 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
                 let back_right_top = (back_right_top + offset) * scale;
                 let back_left_top = (back_left_top + offset) * scale;
 
-                if !get_pixel(&pixel_layers, dimension, i, n, 0, 1, 0) {
+                if !get_pixel(pixel_layers, dimension, i, n, 0, 1, 0) {
                     let front_face = (
                         Face::new(vec![
                             front_right_top,
@@ -400,7 +382,7 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
 
                     faces_with_colors.push(front_face);
                 }
-                if !get_pixel(&pixel_layers, dimension, i, n, 0, -1, 0) {
+                if !get_pixel(pixel_layers, dimension, i, n, 0, -1, 0) {
                     let back_face = (
                         Face::new(vec![
                             back_right_top,
@@ -412,7 +394,7 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
                     );
                     faces_with_colors.push(back_face);
                 }
-                if !get_pixel(&pixel_layers, dimension, i, n, -1, 0, 0) {
+                if !get_pixel(pixel_layers, dimension, i, n, -1, 0, 0) {
                     let left_face = (
                         Face::new(vec![
                             front_left_top,
@@ -424,7 +406,7 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
                     );
                     faces_with_colors.push(left_face);
                 }
-                if !get_pixel(&pixel_layers, dimension, i, n, 1, 0, 0) {
+                if !get_pixel(pixel_layers, dimension, i, n, 1, 0, 0) {
                     let right_face = (
                         Face::new(vec![
                             front_right_top,
@@ -436,7 +418,7 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
                     );
                     faces_with_colors.push(right_face);
                 }
-                if !get_pixel(&pixel_layers, dimension, i, n, 0, 0, 1) {
+                if !get_pixel(pixel_layers, dimension, i, n, 0, 0, 1) {
                     let top_face = (
                         Face::new(vec![
                             front_right_top,
@@ -448,7 +430,7 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
                     );
                     faces_with_colors.push(top_face);
                 }
-                if !get_pixel(&pixel_layers, dimension, i, n, 0, 0, -1) {
+                if !get_pixel(pixel_layers, dimension, i, n, 0, 0, -1) {
                     let bottom_face = (
                         Face::new(vec![
                             front_right_bottom,
@@ -488,4 +470,49 @@ pub fn layer_to_mesh(layer: &[u8]) -> ColoredMesh {
     );
 
     ColoredMesh { points, colors }
+}
+
+#[wasm_bindgen]
+pub fn layer_to_mesh_n_to_z(layer: &[u8]) -> ColoredMesh {
+    let dimension = ((layer.len() / NUM_CHANNELS) as f64).sqrt() as usize;
+    assert_eq!(dimension * dimension * NUM_CHANNELS, layer.len());
+
+    const LAYER_LIMIT: u8 = 50;
+    const NUM_CHANNELS: usize = 4; // R, G, B, A
+    let pixel_layers: Vec<Vec<bool>> = (0..LAYER_LIMIT)
+        .map(|n| {
+            layer
+                .chunks_exact(NUM_CHANNELS)
+                .map(|pixel| {
+                    let red = pixel[0];
+                    red > 255 / LAYER_LIMIT * n
+                })
+                .collect()
+        })
+        .collect();
+
+    layers_to_mesh_from_bools(dimension, &pixel_layers)
+}
+
+#[wasm_bindgen]
+pub fn layers_to_mesh(layers: &[u8], num_layers: usize) -> ColoredMesh {
+    let layers: Vec<&[u8]> = layers.chunks_exact(layers.len() / num_layers).collect();
+    let dimension = ((layers[0].len() / NUM_CHANNELS) as f64).sqrt() as usize;
+    assert_eq!(dimension * dimension * NUM_CHANNELS, layers[0].len());
+
+    const NUM_CHANNELS: usize = 4; // R, G, B, A
+    let pixel_layers: Vec<Vec<bool>> = layers
+        .iter()
+        .map(|layer| {
+            layer
+                .chunks_exact(NUM_CHANNELS)
+                .map(|pixel| {
+                    let red = pixel[0];
+                    red > 0
+                })
+                .collect()
+        })
+        .collect();
+
+    layers_to_mesh_from_bools(dimension, &pixel_layers)
 }

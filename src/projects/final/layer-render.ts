@@ -9,10 +9,6 @@ export const init_layer_canvas = async (
   const gl = canvas.getContext("webgl2", { antialias: true })!;
   const rendering_program = init_shader_program(gl, vs_source, fs_source);
 
-  canvas.width = 750;
-  canvas.height = 750;
-  gl.viewport(0, 0, canvas.width, canvas.height);
-
   const vertex_array_object = gl.createVertexArray();
   gl.bindVertexArray(vertex_array_object);
 
@@ -80,6 +76,10 @@ export const init_layer_canvas = async (
   const id_zoom_factor = gl.getUniformLocation(rendering_program, "zoomFactor");
 
   const render = (snapshot_parameters: SnapshotParameters): Uint8Array => {
+    canvas.width = snapshot_parameters.layer_dimensions;
+    canvas.height = snapshot_parameters.layer_dimensions;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+
     const num_vertices = 6;
 
     gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 1]);

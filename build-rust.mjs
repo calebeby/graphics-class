@@ -4,8 +4,9 @@ import { join } from "node:path";
 import { watch } from "watchlist";
 import * as fs from "node:fs/promises";
 
-const args = process.argv.slice(2).filter((argv) => !argv.startsWith("--dev"));
+const args = process.argv.slice(2).filter((argv) => !argv.startsWith("--"));
 const is_dev = process.argv.includes("--dev");
+const is_watch = process.argv.includes("--watch");
 
 const projects =
   args.length > 0
@@ -48,17 +49,20 @@ async function build(project) {
 }
 
 for (const project of projects) {
-  await build(project);
+  await build(project).catch((error) => console.error(error));
 }
-if (is_dev) {
+if (is_watch) {
   for (const project of projects) {
     let queued_build = false;
 
     const handle_change = () => {
       if (queued_build) return;
       setTimeout(() => {
-        queued_build = false;
-        build(project);
+        build(project)
+          .catch((error) => console.error(error))
+          .then(() => {
+            queued_build = false;
+          });
       }, 1);
       queued_build = true;
     };

@@ -8,7 +8,7 @@ precision highp float;
 in vec4 c;
 
 uniform vec2 juliaC;
-int mode = 0;
+int mode = 1;
 
 out vec4 color;
 
@@ -67,6 +67,11 @@ void main(void) {
   /*              (-cos(0.12 * float(n)) + 1.0) / 2.0, 1.0); */
   /* color = n == 1 ? vec4(1.0, 1.0, 1.0, 1.0) : vec4(0.0, 0.0, 0.0, 1.0); */
   /* float m = 5.0 * float(n) / float(max_n); */
-  float m = 0.01 * float(n);
-  color = vec4(m, m, m, 1.0);
+  /* float m = 0.01 * float(n); */
+  /* color = vec4(m, m, m, 1.0); */
+  if (n == max_n) {
+    color = vec4(1.0, 1.0, 1.0, 1.0);
+  } else {
+    color = vec4(0.0, 0.0, 0.0, 1.0);
+  }
 }

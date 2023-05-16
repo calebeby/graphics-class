@@ -8,6 +8,7 @@
     "build": "astro build",
     "build:rust": "node build-rust.mjs",
     "build:rust:dev": "node build-rust.mjs --dev",
+    "build:rust:watch": "node build-rust.mjs --watch",
     "preview": "astro preview",
     "lint:js:check": "eslint . && prettier --check . --plugin-search-dir=. --cache --loglevel warn",
     "lint:js": "eslint --fix . && prettier --write . --plugin-search-dir=. --cache --loglevel warn",
