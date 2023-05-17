@@ -297,7 +297,10 @@ impl ColoredMesh {
     }
 }
 
-pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -> ColoredMesh {
+pub fn layers_to_mesh_from_bools(
+    dimension: usize,
+    pixel_layers: &[Vec<(bool, u8)>],
+) -> ColoredMesh {
     type Color = Vector3<f64>;
     let mut faces_with_colors: Vec<(Face<f64>, Color)> = vec![];
 
@@ -320,14 +323,14 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
 
     #[inline(always)]
     fn get_pixel(
-        pixels_layers: &[Vec<bool>],
+        pixels_layers: &[Vec<(bool, u8)>],
         dimension: usize,
         i: usize,
         layer: usize,
         offset_rows: isize,
         offset_cols: isize,
         offset_layers: isize,
-    ) -> bool {
+    ) -> Option<u8> {
         let row = (i / dimension) as isize;
         let col = (i % dimension) as isize;
         let new_row = row + offset_rows;
@@ -335,7 +338,7 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
         let new_layer = layer as isize + offset_layers;
 
         if new_layer < 0 {
-            return true;
+            return Some(0);
         }
         if new_row < 0
             || new_col < 0
@@ -343,9 +346,15 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
             || new_col >= dimension as isize
             || new_layer >= pixels_layers.len() as isize
         {
-            false
+            return None;
         } else {
-            pixels_layers[new_layer as usize][dimension * new_row as usize + new_col as usize]
+            let val =
+                pixels_layers[new_layer as usize][dimension * new_row as usize + new_col as usize];
+            if val.0 {
+                Some(val.1)
+            } else {
+                None
+            }
         }
     }
     for (n, pixel_layer) in pixel_layers.iter().enumerate() {
@@ -359,7 +368,7 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
             (-(0.12 * t).cos() + 1.0) / 2.0
         ];
         // let layer_color = (n as f64) * vector![0.0, 0.5, 0.5] / (pixel_layers.len() as f64);
-        for (i, &pixel_filled) in pixel_layer.iter().enumerate() {
+        for (i, &(pixel_filled, color_int)) in pixel_layer.iter().enumerate() {
             let row = i / dimension;
             let col = i % dimension;
             let offset = vector![
@@ -378,7 +387,16 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
                 let back_right_top = (back_right_top + offset) * scale;
                 let back_left_top = (back_left_top + offset) * scale;
 
-                if !get_pixel(pixel_layers, dimension, i, n, 0, 1, 0) {
+                let t = color_int as f64 * 0.5;
+
+                // TODO: Mix these better
+                let px_color = vector![
+                    (-(0.025 * t).cos() + 1.0) / 2.0,
+                    (-(0.08 * t).cos() + 1.0) / 2.0,
+                    (-(0.12 * t).cos() + 1.0) / 2.0
+                ] + 0.1 * layer_color;
+
+                if get_pixel(pixel_layers, dimension, i, n, 0, 1, 0).is_none() {
                     let front_face = (
                         Face::new(vec![
                             front_right_top,
@@ -386,12 +404,12 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
                             front_left_bottom,
                             front_left_top,
                         ]),
-                        color_front_back + layer_color,
+                        color_front_back + px_color,
                     );
 
                     faces_with_colors.push(front_face);
                 }
-                if !get_pixel(pixel_layers, dimension, i, n, 0, -1, 0) {
+                if get_pixel(pixel_layers, dimension, i, n, 0, -1, 0).is_none() {
                     let back_face = (
                         Face::new(vec![
                             back_right_top,
@@ -399,11 +417,11 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
                             back_left_bottom,
                             back_right_bottom,
                         ]),
-                        color_front_back + layer_color,
+                        color_front_back + px_color,
                     );
                     faces_with_colors.push(back_face);
                 }
-                if !get_pixel(pixel_layers, dimension, i, n, -1, 0, 0) {
+                if get_pixel(pixel_layers, dimension, i, n, -1, 0, 0).is_none() {
                     let left_face = (
                         Face::new(vec![
                             front_left_top,
@@ -411,11 +429,11 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
                             back_left_bottom,
                             back_left_top,
                         ]),
-                        color_left_right + layer_color,
+                        color_left_right + px_color,
                     );
                     faces_with_colors.push(left_face);
                 }
-                if !get_pixel(pixel_layers, dimension, i, n, 1, 0, 0) {
+                if get_pixel(pixel_layers, dimension, i, n, 1, 0, 0).is_none() {
                     let right_face = (
                         Face::new(vec![
                             front_right_top,
@@ -423,11 +441,11 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
                             back_right_bottom,
                             front_right_bottom,
                         ]),
-                        color_left_right + layer_color,
+                        color_left_right + px_color,
                     );
                     faces_with_colors.push(right_face);
                 }
-                if !get_pixel(pixel_layers, dimension, i, n, 0, 0, 1) {
+                if get_pixel(pixel_layers, dimension, i, n, 0, 0, 1).is_none() {
                     let top_face = (
                         Face::new(vec![
                             front_right_top,
@@ -435,11 +453,11 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
                             back_left_top,
                             back_right_top,
                         ]),
-                        color_top_bottom + layer_color,
+                        color_top_bottom + px_color,
                     );
                     faces_with_colors.push(top_face);
                 }
-                if !get_pixel(pixel_layers, dimension, i, n, 0, 0, -1) {
+                if get_pixel(pixel_layers, dimension, i, n, 0, 0, -1).is_none() {
                     let bottom_face = (
                         Face::new(vec![
                             front_right_bottom,
@@ -447,7 +465,7 @@ pub fn layers_to_mesh_from_bools(dimension: usize, pixel_layers: &[Vec<bool>]) -
                             back_left_bottom,
                             front_left_bottom,
                         ]),
-                        color_top_bottom + layer_color,
+                        color_top_bottom + px_color,
                     );
                     faces_with_colors.push(bottom_face);
                 }
@@ -488,13 +506,13 @@ pub fn layer_to_mesh_n_to_z(layer: &[u8]) -> ColoredMesh {
 
     const LAYER_LIMIT: u8 = 50;
     const NUM_CHANNELS: usize = 4; // R, G, B, A
-    let pixel_layers: Vec<Vec<bool>> = (0..LAYER_LIMIT)
+    let pixel_layers: Vec<Vec<(bool, u8)>> = (0..LAYER_LIMIT)
         .map(|n| {
             layer
                 .chunks_exact(NUM_CHANNELS)
                 .map(|pixel| {
                     let red = pixel[0];
-                    red > 255 / LAYER_LIMIT * n
+                    (red > 255 / LAYER_LIMIT * n, red)
                 })
                 .collect()
         })
@@ -510,14 +528,15 @@ pub fn layers_to_mesh(layers: &[u8], num_layers: usize) -> ColoredMesh {
     assert_eq!(dimension * dimension * NUM_CHANNELS, layers[0].len());
 
     const NUM_CHANNELS: usize = 4; // R, G, B, A
-    let pixel_layers: Vec<Vec<bool>> = layers
+    let pixel_layers: Vec<Vec<(bool, u8)>> = layers
         .iter()
         .map(|layer| {
             layer
                 .chunks_exact(NUM_CHANNELS)
                 .map(|pixel| {
                     let red = pixel[0];
-                    red > 0
+                    let green = pixel[1];
+                    (red > 0, green)
                 })
                 .collect()
         })

@@ -12,7 +12,7 @@ int mode = 1;
 
 out vec4 color;
 
-int max_n = 50;
+int max_n = 500;
 
 int mandel_potential() {
   vec2 z = c.xy; // x,y starting point in complex plane
@@ -69,9 +69,10 @@ void main(void) {
   /* float m = 5.0 * float(n) / float(max_n); */
   /* float m = 0.01 * float(n); */
   /* color = vec4(m, m, m, 1.0); */
-  if (n == max_n) {
-    color = vec4(1.0, 1.0, 1.0, 1.0);
-  } else {
+  if (n >= max_n) {
     color = vec4(0.0, 0.0, 0.0, 1.0);
+  } else {
+    float t = 10.0 * float(n) / float(max_n);
+    color = vec4(1.0, t, t, 1.0);
   }
 }
