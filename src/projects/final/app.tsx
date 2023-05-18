@@ -323,6 +323,7 @@ const RangeInput = ({
       <input
         type="number"
         value={val}
+        {...props}
         onInput={(e) => set_val(e.currentTarget.valueAsNumber)}
       />
     </label>

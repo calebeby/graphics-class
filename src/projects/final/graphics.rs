@@ -299,16 +299,16 @@ pub fn layers_to_mesh_from_bools(
     type Color = Vector3<f32>;
 
     let scale = 100.0 / (dimension as f32);
-    const LAYER_HEIGHT: f32 = 1.0;
-    let front_right_bottom = Point3::new(0.5, -0.5 * LAYER_HEIGHT, 0.5) * scale;
-    let front_left_bottom = Point3::new(-0.5, -0.5 * LAYER_HEIGHT, 0.5) * scale;
-    let front_right_top = Point3::new(0.5, 0.5 * LAYER_HEIGHT, 0.5) * scale;
-    let front_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, 0.5) * scale;
+    let layer_height = dimension as f32 * 0.01;
+    let front_right_bottom = Point3::new(0.5, -0.5 * layer_height, 0.5) * scale;
+    let front_left_bottom = Point3::new(-0.5, -0.5 * layer_height, 0.5) * scale;
+    let front_right_top = Point3::new(0.5, 0.5 * layer_height, 0.5) * scale;
+    let front_left_top = Point3::new(-0.5, 0.5 * layer_height, 0.5) * scale;
 
-    let back_right_bottom = Point3::new(0.5, -0.5 * LAYER_HEIGHT, -0.5) * scale;
-    let back_left_bottom = Point3::new(-0.5, -0.5 * LAYER_HEIGHT, -0.5) * scale;
-    let back_right_top = Point3::new(0.5, 0.5 * LAYER_HEIGHT, -0.5) * scale;
-    let back_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, -0.5) * scale;
+    let back_right_bottom = Point3::new(0.5, -0.5 * layer_height, -0.5) * scale;
+    let back_left_bottom = Point3::new(-0.5, -0.5 * layer_height, -0.5) * scale;
+    let back_right_top = Point3::new(0.5, 0.5 * layer_height, -0.5) * scale;
+    let back_left_top = Point3::new(-0.5, 0.5 * layer_height, -0.5) * scale;
 
     let front_face = Face::new(vec![
         front_right_top,
@@ -393,47 +393,72 @@ pub fn layers_to_mesh_from_bools(
     let mut colors: Vec<f32> = vec![];
     for (n, pixel_layer) in pixel_layers.iter().enumerate() {
         console_log!("{}%", (n as f64) / (pixel_layers.len() as f64) * 100.0);
-        let t = n as f32;
-        let layer_color: Color = vector![
-            (-(0.025 * t).cos() + 1.0) / 2.0,
-            (-(0.08 * t).cos() + 1.0) / 2.0,
-            (-(0.12 * t).cos() + 1.0) / 2.0
-        ];
-        let layer_color = [layer_color.x, layer_color.y, layer_color.z, 1.0];
+        fn color_map(t: f32) -> Color {
+            const COLOR_CHANGE_RATE: f32 = 4.0;
+            let t = t * COLOR_CHANGE_RATE;
+            vector![
+                (-(0.025 * t).cos() + 1.0) / 2.0,
+                (-(0.08 * t).cos() + 1.0) / 2.0,
+                (-(0.12 * t).cos() + 1.0) / 2.0
+            ]
+        }
+        let down_layer_color = color_map(n as f32);
+        let up_layer_color = color_map((n + 1) as f32);
         for (i, &(pixel_filled, _color_int)) in pixel_layer.iter().enumerate() {
             let row = i / dimension;
             let col = i % dimension;
             let offset = vector![
                 row as f32 - centering_offset,
-                (n as f32) * LAYER_HEIGHT,
+                (n as f32) * layer_height,
                 col as f32 - centering_offset
             ] * scale;
             if pixel_filled {
-                let mut emit_face = |face: &[Point3<f32>]| {
+                let mut emit_face = |face: &[Point3<f32>], color_offset: &Color| {
                     points.extend(face.iter().flat_map(|point| {
                         let point = point + offset;
-                        [point.x, point.y, point.z, 1.0]
+                        [point.x, -point.y, point.z, 1.0]
                     }));
-                    colors.extend(face.iter().flat_map(|_point| layer_color));
+                    // Choose between the current layer color or the layer above
+                    // so that the color mapping can be continuous
+                    colors.extend(face.iter().flat_map(|point| {
+                        let color = if point.y <= 0.0 {
+                            down_layer_color + color_offset
+                        } else {
+                            up_layer_color + color_offset
+                        };
+
+                        [color.x, color.y, color.z, 1.0]
+                    }));
                 };
 
-                if get_pixel(pixel_layers, dimension, i, n, 0, 1, 0).is_none() {
-                    emit_face(&front_face);
+                let empty_front = get_pixel(pixel_layers, dimension, i, n, 0, 1, 0).is_none();
+                let empty_back = get_pixel(pixel_layers, dimension, i, n, 0, -1, 0).is_none();
+                let empty_left = get_pixel(pixel_layers, dimension, i, n, -1, 0, 0).is_none();
+                let empty_right = get_pixel(pixel_layers, dimension, i, n, 1, 0, 0).is_none();
+                let empty_top = get_pixel(pixel_layers, dimension, i, n, 0, 0, 1).is_none();
+                let empty_bottom = get_pixel(pixel_layers, dimension, i, n, 0, 0, -1).is_none();
+
+                let no_color: Color = vector![0.0, 0.0, 0.0];
+                let top_color: Color = vector![0.01, 0.01, 0.01];
+                let bottom_color: Color = -top_color;
+
+                if empty_front {
+                    emit_face(&front_face, &no_color);
                 }
-                if get_pixel(pixel_layers, dimension, i, n, 0, -1, 0).is_none() {
-                    emit_face(&back_face);
+                if empty_back {
+                    emit_face(&back_face, &no_color);
                 }
-                if get_pixel(pixel_layers, dimension, i, n, -1, 0, 0).is_none() {
-                    emit_face(&left_face);
+                if empty_left {
+                    emit_face(&left_face, &no_color);
                 }
-                if get_pixel(pixel_layers, dimension, i, n, 1, 0, 0).is_none() {
-                    emit_face(&right_face);
+                if empty_right {
+                    emit_face(&right_face, &no_color);
                 }
-                if get_pixel(pixel_layers, dimension, i, n, 0, 0, 1).is_none() {
-                    emit_face(&top_face);
+                if empty_top {
+                    emit_face(&top_face, &top_color);
                 }
-                if get_pixel(pixel_layers, dimension, i, n, 0, 0, -1).is_none() {
-                    emit_face(&bottom_face);
+                if empty_bottom {
+                    emit_face(&bottom_face, &bottom_color);
                 }
             }
         }
