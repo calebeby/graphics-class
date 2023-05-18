@@ -18,3 +18,7 @@ parry2d-f64 = "0.13.4"
 parry3d-f64 = "0.13.4"
 console_error_panic_hook = "0.1.7"
 
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+lto = true
+opt-level = 3

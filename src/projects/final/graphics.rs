@@ -33,6 +33,8 @@ pub(crate) trait Number:
 impl Number for f64 {}
 impl Number for f32 {}
 
+const NUM_CHANNELS: usize = 4; // R, G, B, A
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console, js_name = log)]
@@ -49,13 +51,6 @@ macro_rules! console_log {
             println!($($t)*);
         }
     };
-}
-
-fn points_to_float32array(points: &[Vector3<f64>]) -> Vec<f32> {
-    points
-        .iter()
-        .flat_map(|point| [point.x as _, point.y as _, point.z as _, 1.0])
-        .collect()
 }
 
 #[wasm_bindgen]
@@ -301,25 +296,64 @@ pub fn layers_to_mesh_from_bools(
     dimension: usize,
     pixel_layers: &[Vec<(bool, u8)>],
 ) -> ColoredMesh {
-    type Color = Vector3<f64>;
-    let mut faces_with_colors: Vec<(Face<f64>, Color)> = vec![];
+    type Color = Vector3<f32>;
 
-    let scale = 100.0 / (dimension as f64);
-    const LAYER_HEIGHT: f64 = 1.0;
-    let front_right_bottom = Point3::new(0.5, -0.5 * LAYER_HEIGHT, 0.5);
-    let front_left_bottom = Point3::new(-0.5, -0.5 * LAYER_HEIGHT, 0.5);
-    let front_right_top = Point3::new(0.5, 0.5 * LAYER_HEIGHT, 0.5);
-    let front_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, 0.5);
+    let scale = 100.0 / (dimension as f32);
+    const LAYER_HEIGHT: f32 = 1.0;
+    let front_right_bottom = Point3::new(0.5, -0.5 * LAYER_HEIGHT, 0.5) * scale;
+    let front_left_bottom = Point3::new(-0.5, -0.5 * LAYER_HEIGHT, 0.5) * scale;
+    let front_right_top = Point3::new(0.5, 0.5 * LAYER_HEIGHT, 0.5) * scale;
+    let front_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, 0.5) * scale;
 
-    let back_right_bottom = Point3::new(0.5, -0.5 * LAYER_HEIGHT, -0.5);
-    let back_left_bottom = Point3::new(-0.5, -0.5 * LAYER_HEIGHT, -0.5);
-    let back_right_top = Point3::new(0.5, 0.5 * LAYER_HEIGHT, -0.5);
-    let back_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, -0.5);
-    let centering_offset = (dimension as f64) / 2.0;
+    let back_right_bottom = Point3::new(0.5, -0.5 * LAYER_HEIGHT, -0.5) * scale;
+    let back_left_bottom = Point3::new(-0.5, -0.5 * LAYER_HEIGHT, -0.5) * scale;
+    let back_right_top = Point3::new(0.5, 0.5 * LAYER_HEIGHT, -0.5) * scale;
+    let back_left_top = Point3::new(-0.5, 0.5 * LAYER_HEIGHT, -0.5) * scale;
 
-    let color_front_back = vector![0.0, 0.0, 0.0];
-    let color_top_bottom = vector![0.0, 0.0, 0.0];
-    let color_left_right = vector![0.0, 0.0, 0.0];
+    let front_face = Face::new(vec![
+        front_right_top,
+        front_right_bottom,
+        front_left_bottom,
+        front_left_top,
+    ])
+    .break_into_triangles();
+    let back_face = Face::new(vec![
+        back_right_top,
+        back_left_top,
+        back_left_bottom,
+        back_right_bottom,
+    ])
+    .break_into_triangles();
+    let left_face = Face::new(vec![
+        front_left_top,
+        front_left_bottom,
+        back_left_bottom,
+        back_left_top,
+    ])
+    .break_into_triangles();
+    let right_face = Face::new(vec![
+        front_right_top,
+        back_right_top,
+        back_right_bottom,
+        front_right_bottom,
+    ])
+    .break_into_triangles();
+    let top_face = Face::new(vec![
+        front_right_top,
+        front_left_top,
+        back_left_top,
+        back_right_top,
+    ])
+    .break_into_triangles();
+    let bottom_face = Face::new(vec![
+        front_right_bottom,
+        back_right_bottom,
+        back_left_bottom,
+        front_left_bottom,
+    ])
+    .break_into_triangles();
+
+    let centering_offset = (dimension as f32) / 2.0;
 
     #[inline(always)]
     fn get_pixel(
@@ -337,16 +371,14 @@ pub fn layers_to_mesh_from_bools(
         let new_col = col + offset_cols;
         let new_layer = layer as isize + offset_layers;
 
-        if new_layer < 0 {
-            return Some(0);
-        }
         if new_row < 0
             || new_col < 0
             || new_row >= dimension as isize
             || new_col >= dimension as isize
             || new_layer >= pixels_layers.len() as isize
+            || new_layer < 0
         {
-            return None;
+            Some(0)
         } else {
             let val =
                 pixels_layers[new_layer as usize][dimension * new_row as usize + new_col as usize];
@@ -357,144 +389,55 @@ pub fn layers_to_mesh_from_bools(
             }
         }
     }
+    let mut points: Vec<f32> = vec![];
+    let mut colors: Vec<f32> = vec![];
     for (n, pixel_layer) in pixel_layers.iter().enumerate() {
         console_log!("{}%", (n as f64) / (pixel_layers.len() as f64) * 100.0);
-        let t = n as f64;
-        // let layer_color = vector![0.5, t.sin() * 0.5, t.cos() * 0.5];
-
-        let layer_color = vector![
+        let t = n as f32;
+        let layer_color: Color = vector![
             (-(0.025 * t).cos() + 1.0) / 2.0,
             (-(0.08 * t).cos() + 1.0) / 2.0,
             (-(0.12 * t).cos() + 1.0) / 2.0
         ];
-        // let layer_color = (n as f64) * vector![0.0, 0.5, 0.5] / (pixel_layers.len() as f64);
-        for (i, &(pixel_filled, color_int)) in pixel_layer.iter().enumerate() {
+        let layer_color = [layer_color.x, layer_color.y, layer_color.z, 1.0];
+        for (i, &(pixel_filled, _color_int)) in pixel_layer.iter().enumerate() {
             let row = i / dimension;
             let col = i % dimension;
             let offset = vector![
-                row as f64 - centering_offset,
-                (n as f64) * LAYER_HEIGHT,
-                col as f64 - centering_offset
-            ];
+                row as f32 - centering_offset,
+                (n as f32) * LAYER_HEIGHT,
+                col as f32 - centering_offset
+            ] * scale;
             if pixel_filled {
-                let front_right_bottom = (front_right_bottom + offset) * scale;
-                let front_left_bottom = (front_left_bottom + offset) * scale;
-                let front_right_top = (front_right_top + offset) * scale;
-                let front_left_top = (front_left_top + offset) * scale;
-
-                let back_right_bottom = (back_right_bottom + offset) * scale;
-                let back_left_bottom = (back_left_bottom + offset) * scale;
-                let back_right_top = (back_right_top + offset) * scale;
-                let back_left_top = (back_left_top + offset) * scale;
-
-                let t = color_int as f64 * 0.5;
-
-                // TODO: Mix these better
-                let px_color = vector![
-                    (-(0.025 * t).cos() + 1.0) / 2.0,
-                    (-(0.08 * t).cos() + 1.0) / 2.0,
-                    (-(0.12 * t).cos() + 1.0) / 2.0
-                ] + 0.1 * layer_color;
+                let mut emit_face = |face: &[Point3<f32>]| {
+                    points.extend(face.iter().flat_map(|point| {
+                        let point = point + offset;
+                        [point.x, point.y, point.z, 1.0]
+                    }));
+                    colors.extend(face.iter().flat_map(|_point| layer_color));
+                };
 
                 if get_pixel(pixel_layers, dimension, i, n, 0, 1, 0).is_none() {
-                    let front_face = (
-                        Face::new(vec![
-                            front_right_top,
-                            front_right_bottom,
-                            front_left_bottom,
-                            front_left_top,
-                        ]),
-                        color_front_back + px_color,
-                    );
-
-                    faces_with_colors.push(front_face);
+                    emit_face(&front_face);
                 }
                 if get_pixel(pixel_layers, dimension, i, n, 0, -1, 0).is_none() {
-                    let back_face = (
-                        Face::new(vec![
-                            back_right_top,
-                            back_left_top,
-                            back_left_bottom,
-                            back_right_bottom,
-                        ]),
-                        color_front_back + px_color,
-                    );
-                    faces_with_colors.push(back_face);
+                    emit_face(&back_face);
                 }
                 if get_pixel(pixel_layers, dimension, i, n, -1, 0, 0).is_none() {
-                    let left_face = (
-                        Face::new(vec![
-                            front_left_top,
-                            front_left_bottom,
-                            back_left_bottom,
-                            back_left_top,
-                        ]),
-                        color_left_right + px_color,
-                    );
-                    faces_with_colors.push(left_face);
+                    emit_face(&left_face);
                 }
                 if get_pixel(pixel_layers, dimension, i, n, 1, 0, 0).is_none() {
-                    let right_face = (
-                        Face::new(vec![
-                            front_right_top,
-                            back_right_top,
-                            back_right_bottom,
-                            front_right_bottom,
-                        ]),
-                        color_left_right + px_color,
-                    );
-                    faces_with_colors.push(right_face);
+                    emit_face(&right_face);
                 }
                 if get_pixel(pixel_layers, dimension, i, n, 0, 0, 1).is_none() {
-                    let top_face = (
-                        Face::new(vec![
-                            front_right_top,
-                            front_left_top,
-                            back_left_top,
-                            back_right_top,
-                        ]),
-                        color_top_bottom + px_color,
-                    );
-                    faces_with_colors.push(top_face);
+                    emit_face(&top_face);
                 }
                 if get_pixel(pixel_layers, dimension, i, n, 0, 0, -1).is_none() {
-                    let bottom_face = (
-                        Face::new(vec![
-                            front_right_bottom,
-                            back_right_bottom,
-                            back_left_bottom,
-                            front_left_bottom,
-                        ]),
-                        color_top_bottom + px_color,
-                    );
-                    faces_with_colors.push(bottom_face);
+                    emit_face(&bottom_face);
                 }
             }
         }
     }
-    let points = points_to_float32array(
-        &faces_with_colors
-            .iter()
-            .flat_map(|(face, _color)| {
-                face.break_into_triangles()
-                    .iter()
-                    .map(|p| p.coords)
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>(),
-    );
-
-    let colors = points_to_float32array(
-        &faces_with_colors
-            .iter()
-            .flat_map(|(face, color)| {
-                face.break_into_triangles()
-                    .iter()
-                    .map(|_| *color)
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>(),
-    );
 
     ColoredMesh { points, colors }
 }
@@ -505,7 +448,6 @@ pub fn layer_to_mesh_n_to_z(layer: &[u8]) -> ColoredMesh {
     assert_eq!(dimension * dimension * NUM_CHANNELS, layer.len());
 
     const LAYER_LIMIT: u8 = 50;
-    const NUM_CHANNELS: usize = 4; // R, G, B, A
     let pixel_layers: Vec<Vec<(bool, u8)>> = (0..LAYER_LIMIT)
         .map(|n| {
             layer

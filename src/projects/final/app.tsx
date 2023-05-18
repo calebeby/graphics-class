@@ -28,7 +28,7 @@ const default_snapshot_parameters: SnapshotParameters = {
   zoom_factor: 1.0,
   center_of_view: [0.0, 0.0, 0.0],
   map_z_to_n: false,
-  layer_dimensions: 500,
+  layer_dimensions: 1000,
   min_parameter: -0.1,
   max_parameter: 0.1,
 };
@@ -196,6 +196,17 @@ export const Final = ({}: Props) => {
     <div class="demo">
       {error}
       <canvas class="layer-canvas" ref={layer_canvas_ref}></canvas>
+      <RangeInput
+        label="Layer width/height"
+        min={100}
+        max={5000}
+        step={10}
+        initial_value={snapshot_parameters.current.layer_dimensions}
+        on_change={(val) => {
+          snapshot_parameters.current.layer_dimensions = val;
+          render_2d(snapshot_parameters.current);
+        }}
+      />
       <RangeInput
         label="Julia C (Re)"
         min={-2}
